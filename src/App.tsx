@@ -57,20 +57,6 @@ export default function App() {
         console.error("Error listening to room:", error);
       });
 
-      // Join room
-      const joinRoom = async () => {
-        const snap = await getDoc(roomRef);
-        if (snap.exists()) {
-          const data = snap.data() as RoomState;
-          if (!data.users[user.id]) {
-            await updateDoc(roomRef, {
-              [`users.${user.id}`]: user
-            });
-          }
-        }
-      };
-      joinRoom();
-
       return () => unsubscribe();
     }
   }, [roomId, user, isAuthReady]);
@@ -86,7 +72,7 @@ export default function App() {
       id: newRoomId,
       name: roomNameInput,
       status: "voting",
-      calculationMethod: "average",
+      calculationMethod: "sumByRole",
       manualModeSelections: {},
       users: {
         [scrumMaster.id]: scrumMaster
@@ -103,9 +89,21 @@ export default function App() {
     }
   };
 
-  const handleJoin = (name: string, role: "QA" | "Dev" | "ScrumMaster") => {
-    if (!isAuthReady) return;
-    setUser({ id: auth.currentUser!.uid, name, role, vote: null });
+  const handleJoin = async (name: string, role: string) => {
+    if (!isAuthReady || !roomId) return;
+    
+    const newUser: User = { id: auth.currentUser!.uid, name, role, vote: null };
+    
+    try {
+      const roomRef = doc(db, "rooms", roomId);
+      await updateDoc(roomRef, {
+        [`users.${newUser.id}`]: newUser
+      });
+      setUser(newUser);
+    } catch (error) {
+      console.error("Error joining room:", error);
+      throw error;
+    }
   };
 
   const handleVote = async (vote: number) => {

@@ -1,7 +1,7 @@
 export interface User {
   id: string;
   name: string;
-  role: "QA" | "Dev" | "ScrumMaster";
+  role: string;
   vote: number | null;
 }
 

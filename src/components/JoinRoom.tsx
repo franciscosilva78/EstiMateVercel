@@ -1,17 +1,25 @@
 import { useState, FormEvent } from "react";
 
 interface JoinRoomProps {
-  onJoin: (name: string, role: "QA" | "Dev") => void;
+  onJoin: (name: string, role: string) => Promise<void>;
 }
 
 export function JoinRoom({ onJoin }: JoinRoomProps) {
   const [name, setName] = useState("");
-  const [role, setRole] = useState<"QA" | "Dev">("Dev");
+  const [role, setRole] = useState<string>("Dev");
+  const [customRole, setCustomRole] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (name.trim()) {
-      onJoin(name.trim(), role);
+      setIsLoading(true);
+      const finalRole = role === "Outro" ? customRole.trim() || "Outro" : role;
+      try {
+        await onJoin(name.trim(), finalRole);
+      } catch (error) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -35,7 +43,7 @@ export function JoinRoom({ onJoin }: JoinRoomProps) {
         </div>
         <div>
           <label className="block text-xs sm:text-sm font-bold text-slate-300 mb-2 uppercase tracking-wider">Selecione sua Função</label>
-          <div className="flex gap-3 sm:gap-4">
+          <div className="flex gap-3 sm:gap-4 mb-3">
             <label className="flex-1 cursor-pointer">
               <input
                 type="radio"
@@ -62,14 +70,37 @@ export function JoinRoom({ onJoin }: JoinRoomProps) {
                 QA
               </div>
             </label>
+            <label className="flex-1 cursor-pointer">
+              <input
+                type="radio"
+                name="role"
+                value="Outro"
+                checked={role === "Outro"}
+                onChange={() => setRole("Outro")}
+                className="peer sr-only"
+              />
+              <div className="text-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl bg-slate-950 border border-white/10 peer-checked:border-emerald-500 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-400 peer-checked:shadow-[0_0_15px_-3px_rgba(16,185,129,0.3)] font-bold transition-all text-xs sm:text-sm">
+                OUTRO
+              </div>
+            </label>
           </div>
+          {role === "Outro" && (
+            <input
+              type="text"
+              value={customRole}
+              onChange={(e) => setCustomRole(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-white/10 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-white placeholder-slate-600 font-medium text-sm sm:text-base"
+              placeholder="Digite sua função (ex: Designer)"
+              required
+            />
+          )}
         </div>
         <button
           type="submit"
-          disabled={!name.trim()}
+          disabled={!name.trim() || isLoading}
           className="w-full py-3.5 sm:py-4 bg-gradient-to-r from-cyan-500 to-purple-600 text-white rounded-xl font-bold text-base sm:text-lg shadow-[0_0_20px_-5px_rgba(34,211,238,0.4)] hover:shadow-[0_0_30px_-5px_rgba(34,211,238,0.6)] disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-[1.02]"
         >
-          Entrar na Sala
+          {isLoading ? "Entrando..." : "Entrar na Sala"}
         </button>
       </form>
     </div>

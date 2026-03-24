@@ -15,6 +15,17 @@ interface RoomProps {
 
 const VOTING_OPTIONS = Array.from({ length: 26 }, (_, i) => (i + 1) * 0.5);
 
+const getColorClasses = (idx: number) => {
+  const colors = [
+    { border: "border-purple-500/30", text: "text-purple-400", shadow: "shadow-[0_0_30px_-10px_rgba(168,85,247,0.2)]", bg: "bg-purple-500/20", borderActive: "border-purple-500", badge: "bg-purple-500/20 text-purple-300", iconBg: "bg-purple-500/10 border-purple-500/50 text-purple-400" },
+    { border: "border-cyan-500/30", text: "text-cyan-400", shadow: "shadow-[0_0_30px_-10px_rgba(34,211,238,0.2)]", bg: "bg-cyan-500/20", borderActive: "border-cyan-500", badge: "bg-cyan-500/20 text-cyan-300", iconBg: "bg-cyan-500/10 border-cyan-500/50 text-cyan-400" },
+    { border: "border-emerald-500/30", text: "text-emerald-400", shadow: "shadow-[0_0_30px_-10px_rgba(16,185,129,0.2)]", bg: "bg-emerald-500/20", borderActive: "border-emerald-500", badge: "bg-emerald-500/20 text-emerald-300", iconBg: "bg-emerald-500/10 border-emerald-500/50 text-emerald-400" },
+    { border: "border-amber-500/30", text: "text-amber-400", shadow: "shadow-[0_0_30px_-10px_rgba(245,158,11,0.2)]", bg: "bg-amber-500/20", borderActive: "border-amber-500", badge: "bg-amber-500/20 text-amber-300", iconBg: "bg-amber-500/10 border-amber-500/50 text-amber-400" },
+    { border: "border-pink-500/30", text: "text-pink-400", shadow: "shadow-[0_0_30px_-10px_rgba(236,72,153,0.2)]", bg: "bg-pink-500/20", borderActive: "border-pink-500", badge: "bg-pink-500/20 text-pink-300", iconBg: "bg-pink-500/10 border-pink-500/50 text-pink-400" },
+  ];
+  return colors[idx % colors.length];
+};
+
 export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDelete, onCalculationChange, onSelectManualMode }: RoomProps) {
   const [copied, setCopied] = useState(false);
 
@@ -39,7 +50,7 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
 
   const users = Object.values(roomState.users).filter(u => u.role !== "ScrumMaster");
   const isRevealed = roomState.status === "revealed";
-  const method = roomState.calculationMethod || "average";
+  const method = roomState.calculationMethod || "sumByRole";
   const manualSelections = roomState.manualModeSelections || {};
 
   // Helper to get vote distribution and modes
@@ -66,25 +77,26 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
     };
   };
 
-  // Calculate values
-  const qaVotes = users.filter((u) => u.role === "QA" && u.vote !== null).map(u => u.vote as number);
-  const devVotes = users.filter((u) => u.role === "Dev" && u.vote !== null).map(u => u.vote as number);
+  // Group users by role dynamically
+  const roles = Array.from(new Set(users.map(u => u.role)));
+  
+  const roleResults: Record<string, { result: number, stats: ReturnType<typeof getVoteStats> }> = {};
+  let totalSum = 0;
 
-  const qaStats = getVoteStats(qaVotes);
-  const devStats = getVoteStats(devVotes);
-
-  let qaResult = 0;
-  let devResult = 0;
-
-  if (method === "average") {
-    qaResult = qaVotes.length ? qaVotes.reduce((a, b) => a + b, 0) / qaVotes.length : 0;
-    devResult = devVotes.length ? devVotes.reduce((a, b) => a + b, 0) / devVotes.length : 0;
-  } else {
-    qaResult = manualSelections["QA"] !== undefined ? manualSelections["QA"] : qaStats.autoMode;
-    devResult = manualSelections["Dev"] !== undefined ? manualSelections["Dev"] : devStats.autoMode;
-  }
-
-  const totalSum = qaResult + devResult;
+  roles.forEach(role => {
+    const roleVotes = users.filter(u => u.role === role && u.vote !== null).map(u => u.vote as number);
+    const stats = getVoteStats(roleVotes);
+    
+    let result = 0;
+    if (method === "average") {
+      result = roleVotes.length ? roleVotes.reduce((a, b) => a + b, 0) / roleVotes.length : 0;
+    } else {
+      result = manualSelections[role] !== undefined ? manualSelections[role] : stats.autoMode;
+    }
+    
+    roleResults[role] = { result, stats };
+    totalSum += result;
+  });
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -121,16 +133,6 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
         <div className="flex justify-center">
           <div className="bg-slate-900/80 p-1.5 rounded-2xl border border-white/10 flex gap-2">
             <button
-              onClick={() => onCalculationChange("average")}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                method === "average" 
-                  ? "bg-cyan-500 text-white shadow-[0_0_15px_rgba(34,211,238,0.4)]" 
-                  : "text-slate-500 hover:text-slate-300"
-              }`}
-            >
-              MÉDIA SIMPLES
-            </button>
-            <button
               onClick={() => onCalculationChange("sumByRole")}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                 method === "sumByRole" 
@@ -139,6 +141,16 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
               }`}
             >
               MAIS VOTADO POR FUNÇÃO
+            </button>
+            <button
+              onClick={() => onCalculationChange("average")}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                method === "average" 
+                  ? "bg-cyan-500 text-white shadow-[0_0_15px_rgba(34,211,238,0.4)]" 
+                  : "text-slate-500 hover:text-slate-300"
+              }`}
+            >
+              MÉDIA SIMPLES
             </button>
           </div>
         </div>
@@ -172,20 +184,21 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
       {/* Results */}
       {isRevealed && currentUser.role === "ScrumMaster" && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-            <div className="bg-slate-900/50 p-4 sm:p-6 rounded-3xl border border-purple-500/30 backdrop-blur-sm shadow-[0_0_30px_-10px_rgba(168,85,247,0.2)] flex flex-col items-center justify-center relative overflow-hidden">
-              <span className="text-purple-400 font-bold uppercase tracking-widest text-[10px] sm:text-xs mb-1 sm:mb-2 relative z-10">
-                {method === "average" ? "Média QA" : "Resultado QA"}
-              </span>
-              <span className="text-3xl sm:text-5xl font-bold text-white relative z-10">{qaResult > 0 ? qaResult.toFixed(method === "average" ? 2 : 1) : "-"}</span>
-            </div>
-            <div className="bg-slate-900/50 p-4 sm:p-6 rounded-3xl border border-cyan-500/30 backdrop-blur-sm shadow-[0_0_30px_-10px_rgba(34,211,238,0.2)] flex flex-col items-center justify-center relative overflow-hidden">
-              <span className="text-cyan-400 font-bold uppercase tracking-widest text-[10px] sm:text-xs mb-1 sm:mb-2 relative z-10">
-                {method === "average" ? "Média Dev" : "Resultado Dev"}
-              </span>
-              <span className="text-3xl sm:text-5xl font-bold text-white relative z-10">{devResult > 0 ? devResult.toFixed(method === "average" ? 2 : 1) : "-"}</span>
-            </div>
-            <div className="bg-gradient-to-br from-indigo-900 to-slate-900 p-4 sm:p-6 rounded-3xl border border-indigo-500/50 shadow-[0_0_40px_-10px_rgba(99,102,241,0.4)] flex flex-col items-center justify-center relative overflow-hidden">
+          <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
+            {roles.map((role, idx) => {
+              const { result } = roleResults[role];
+              const colors = getColorClasses(idx);
+              return (
+                <div key={role} className={`flex-1 min-w-[200px] max-w-[300px] bg-slate-900/50 p-4 sm:p-6 rounded-3xl border ${colors.border} backdrop-blur-sm ${colors.shadow} flex flex-col items-center justify-center relative overflow-hidden`}>
+                  <span className={`${colors.text} font-bold uppercase tracking-widest text-[10px] sm:text-xs mb-1 sm:mb-2 relative z-10`}>
+                    {method === "average" ? `Média ${role}` : `Resultado ${role}`}
+                  </span>
+                  <span className="text-3xl sm:text-5xl font-bold text-white relative z-10">{result > 0 ? result.toFixed(method === "average" ? 2 : 1) : "-"}</span>
+                </div>
+              );
+            })}
+            
+            <div className="flex-1 min-w-[200px] max-w-[300px] bg-gradient-to-br from-indigo-900 to-slate-900 p-4 sm:p-6 rounded-3xl border border-indigo-500/50 shadow-[0_0_40px_-10px_rgba(99,102,241,0.4)] flex flex-col items-center justify-center relative overflow-hidden">
               <span className="text-indigo-300 font-bold uppercase tracking-widest text-[10px] sm:text-xs mb-1 sm:mb-2 relative z-10">Soma Total</span>
               <span className="text-3xl sm:text-5xl font-bold text-white relative z-10">{totalSum > 0 ? totalSum.toFixed(method === "average" ? 2 : 1) : "-"}</span>
             </div>
@@ -193,72 +206,45 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
 
           {/* Tie Breaker / Distribution UI */}
           {method === "sumByRole" && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* QA Distribution */}
-              <div className="bg-slate-900/40 p-5 rounded-3xl border border-purple-500/20">
-                <h4 className="text-xs font-bold text-purple-400 uppercase tracking-widest mb-4">Distribuição de Votos QA</h4>
-                <div className="space-y-3">
-                  {Object.entries(qaStats.distribution).sort((a, b) => Number(b[0]) - Number(a[0])).map(([vote, count]) => {
-                    const isMode = qaStats.modes.includes(Number(vote));
-                    const isSelected = qaResult === Number(vote);
-                    return (
-                      <button
-                        key={vote}
-                        disabled={!isMode || qaStats.modes.length <= 1}
-                        onClick={() => onSelectManualMode("QA", Number(vote))}
-                        className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${
-                          isSelected 
-                            ? "bg-purple-500/20 border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.2)]" 
-                            : isMode 
-                              ? "bg-slate-800 border-purple-500/30 hover:border-purple-500/60" 
-                              : "bg-slate-950/50 border-white/5 opacity-60"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-lg font-black text-white">{vote}</span>
-                          {isMode && qaStats.modes.length > 1 && (
-                            <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase">Empate</span>
-                          )}
-                        </div>
-                        <span className="text-sm font-bold text-slate-400">{count} voto{count !== 1 ? "s" : ""}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Dev Distribution */}
-              <div className="bg-slate-900/40 p-5 rounded-3xl border border-cyan-500/20">
-                <h4 className="text-xs font-bold text-cyan-400 uppercase tracking-widest mb-4">Distribuição de Votos Dev</h4>
-                <div className="space-y-3">
-                  {Object.entries(devStats.distribution).sort((a, b) => Number(b[0]) - Number(a[0])).map(([vote, count]) => {
-                    const isMode = devStats.modes.includes(Number(vote));
-                    const isSelected = devResult === Number(vote);
-                    return (
-                      <button
-                        key={vote}
-                        disabled={!isMode || devStats.modes.length <= 1}
-                        onClick={() => onSelectManualMode("Dev", Number(vote))}
-                        className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${
-                          isSelected 
-                            ? "bg-cyan-500/20 border-cyan-500 shadow-[0_0_15px_rgba(34,211,238,0.2)]" 
-                            : isMode 
-                              ? "bg-slate-800 border-cyan-500/30 hover:border-cyan-500/60" 
-                              : "bg-slate-950/50 border-white/5 opacity-60"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-lg font-black text-white">{vote}</span>
-                          {isMode && devStats.modes.length > 1 && (
-                            <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase">Empate</span>
-                          )}
-                        </div>
-                        <span className="text-sm font-bold text-slate-400">{count} voto{count !== 1 ? "s" : ""}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {roles.map((role, idx) => {
+                const { result, stats } = roleResults[role];
+                const colors = getColorClasses(idx);
+                
+                return (
+                  <div key={role} className={`bg-slate-900/40 p-5 rounded-3xl border ${colors.border}`}>
+                    <h4 className={`text-xs font-bold ${colors.text} uppercase tracking-widest mb-4`}>Distribuição de Votos {role}</h4>
+                    <div className="space-y-3">
+                      {Object.entries(stats.distribution).sort((a, b) => Number(b[0]) - Number(a[0])).map(([vote, count]) => {
+                        const isMode = stats.modes.includes(Number(vote));
+                        const isSelected = result === Number(vote);
+                        return (
+                          <button
+                            key={vote}
+                            disabled={!isMode || stats.modes.length <= 1}
+                            onClick={() => onSelectManualMode(role, Number(vote))}
+                            className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${
+                              isSelected 
+                                ? `${colors.bg} ${colors.borderActive} ${colors.shadow}` 
+                                : isMode 
+                                  ? `bg-slate-800 ${colors.border} hover:${colors.borderActive}` 
+                                  : "bg-slate-950/50 border-white/5 opacity-60"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="text-lg font-black text-white">{vote}</span>
+                              {isMode && stats.modes.length > 1 && (
+                                <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase">Empate</span>
+                              )}
+                            </div>
+                            <span className="text-sm font-bold text-slate-400">{count} voto{count !== 1 ? "s" : ""}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -304,46 +290,45 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
           {users
             .filter((user) => currentUser.role === "ScrumMaster" || user.id === currentUser.id)
-            .map((user) => (
-            <div
-              key={user.id}
-              className={`flex flex-col items-center p-4 sm:p-6 rounded-2xl border transition-all duration-500 ${
-                user.vote !== null
-                  ? "bg-slate-800/80 border-cyan-500/50"
-                  : "bg-slate-900/50 border-white/10 border-dashed opacity-70"
-              }`}
-            >
-              <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-full flex items-center justify-center font-bold text-base sm:text-xl mb-3 sm:mb-4 border-2 ${
-                user.role === "QA" 
-                  ? "bg-purple-500/10 border-purple-500/50 text-purple-400" 
-                  : "bg-cyan-500/10 border-cyan-500/50 text-cyan-400"
-              }`}>
-                {user.name.charAt(0).toUpperCase()}
-              </div>
-              <span className="font-bold text-slate-200 truncate w-full text-center mb-1 text-sm sm:text-base">
-                {user.name}
-              </span>
-              <span
-                className={`text-[8px] sm:text-[10px] font-bold px-2 py-0.5 sm:py-1 rounded-md mb-3 sm:mb-5 uppercase tracking-widest ${
-                  user.role === "QA" ? "bg-purple-500/20 text-purple-300" : "bg-cyan-500/20 text-cyan-300"
-                }`}
-              >
-                {user.role}
-              </span>
+            .map((user) => {
+              const roleIdx = roles.indexOf(user.role);
+              const colors = roleIdx >= 0 ? getColorClasses(roleIdx) : getColorClasses(0);
+              
+              return (
+                <div
+                  key={user.id}
+                  className={`flex flex-col items-center p-4 sm:p-6 rounded-2xl border transition-all duration-500 ${
+                    user.vote !== null
+                      ? "bg-slate-800/80 border-cyan-500/50"
+                      : "bg-slate-900/50 border-white/10 border-dashed opacity-70"
+                  }`}
+                >
+                  <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-full flex items-center justify-center font-bold text-base sm:text-xl mb-3 sm:mb-4 border-2 ${colors.iconBg}`}>
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="font-bold text-slate-200 truncate w-full text-center mb-1 text-sm sm:text-base">
+                    {user.name}
+                  </span>
+                  <span
+                    className={`text-[8px] sm:text-[10px] font-bold px-2 py-0.5 sm:py-1 rounded-md mb-3 sm:mb-5 uppercase tracking-widest ${colors.badge}`}
+                  >
+                    {user.role}
+                  </span>
 
-              <div
-                className={`w-12 h-16 sm:w-16 sm:h-20 rounded-xl flex items-center justify-center text-2xl sm:text-3xl font-black border-2 transition-all duration-500 ${
-                  user.vote !== null
-                    ? (isRevealed && currentUser.role === "ScrumMaster") || user.id === currentUser.id
-                      ? "bg-gradient-to-br from-slate-700 to-slate-800 border-white/20 text-white"
-                      : "bg-cyan-500/20 border-cyan-500/50 text-cyan-400"
-                    : "bg-slate-950 border-white/5 text-slate-700"
-                }`}
-              >
-                {user.vote !== null ? ((isRevealed && currentUser.role === "ScrumMaster") || user.id === currentUser.id ? user.vote : "✓") : "?"}
-              </div>
-            </div>
-          ))}
+                  <div
+                    className={`w-12 h-16 sm:w-16 sm:h-20 rounded-xl flex items-center justify-center text-2xl sm:text-3xl font-black border-2 transition-all duration-500 ${
+                      user.vote !== null
+                        ? (isRevealed && currentUser.role === "ScrumMaster") || user.id === currentUser.id
+                          ? "bg-gradient-to-br from-slate-700 to-slate-800 border-white/20 text-white"
+                          : "bg-cyan-500/20 border-cyan-500/50 text-cyan-400"
+                        : "bg-slate-950 border-white/5 text-slate-700"
+                    }`}
+                  >
+                    {user.vote !== null ? ((isRevealed && currentUser.role === "ScrumMaster") || user.id === currentUser.id ? user.vote : "✓") : "?"}
+                  </div>
+                </div>
+              );
+            })}
         </div>
       </div>
     </div>
