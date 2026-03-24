@@ -1,6 +1,5 @@
 /// <reference types="vite/client" />
 import { useEffect, useState, FormEvent } from "react";
-import { v4 as uuidv4 } from "uuid";
 import { RoomState, User } from "./types";
 import { JoinRoom } from "./components/JoinRoom";
 import { Room } from "./components/Room";
@@ -8,6 +7,15 @@ import { Layout } from "./components/Layout";
 import { db, auth } from "./firebase";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import { doc, setDoc, onSnapshot, updateDoc, deleteDoc, getDoc } from "firebase/firestore";
+
+const generateShortId = () => {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
 
 export default function App() {
   const [roomId, setRoomId] = useState<string | null>(null);
@@ -65,7 +73,7 @@ export default function App() {
     e.preventDefault();
     if (!roomNameInput.trim() || !isAuthReady) return;
     
-    const newRoomId = uuidv4();
+    const newRoomId = generateShortId();
     const scrumMaster: User = { id: auth.currentUser!.uid, name: "Scrum Master", role: "ScrumMaster", vote: null };
     
     const newRoom: RoomState = {
@@ -81,7 +89,7 @@ export default function App() {
 
     try {
       await setDoc(doc(db, "rooms", newRoomId), newRoom);
-      window.history.pushState({}, "", `/room/${newRoomId}?name=${encodeURIComponent(roomNameInput)}`);
+      window.history.pushState({}, "", `/room/${newRoomId}`);
       setRoomId(newRoomId);
       setUser(scrumMaster);
     } catch (error) {
