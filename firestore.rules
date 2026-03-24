@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: rooms
+    // Document ID: {roomId}
+    // Fields:
+    //   - id: string (required)
+    //   - name: string (required)
+    //   - status: string (required, 'voting' or 'revealed')
+    //   - calculationMethod: string (required, 'average' or 'sumByRole')
+    //   - manualModeSelections: map (optional)
+    //   - users: map (required)
+    //   - createdAt: number (required)
+    //
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    match /rooms/{roomId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+  }
+}

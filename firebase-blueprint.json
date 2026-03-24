@@ -1,0 +1,40 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user in a planning poker room",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["QA", "Dev", "ScrumMaster"] },
+        "vote": { "type": "number", "description": "The user's vote, or null if not voted" }
+      },
+      "required": ["id", "name", "role"]
+    },
+    "Room": {
+      "title": "Room",
+      "description": "A planning poker room",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "status": { "type": "string", "enum": ["voting", "revealed"] },
+        "calculationMethod": { "type": "string", "enum": ["average", "sumByRole"] },
+        "manualModeSelections": { "type": "object", "description": "Manual selections for ties" },
+        "users": {
+          "type": "object",
+          "description": "Map of user IDs to User objects"
+        },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "name", "status", "calculationMethod", "users"]
+    }
+  },
+  "firestore": {
+    "rooms/{roomId}": {
+      "schema": { "$ref": "#/entities/Room" },
+      "description": "Stores planning poker rooms"
+    }
+  }
+}
