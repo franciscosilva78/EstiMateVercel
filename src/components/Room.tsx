@@ -42,7 +42,7 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
   }
 
   const handleShare = () => {
-    const shareUrl = window.location.origin + window.location.pathname + `?name=${encodeURIComponent(roomState.name)}`;
+    const shareUrl = window.location.origin + window.location.pathname;
     navigator.clipboard.writeText(shareUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
