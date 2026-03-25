@@ -49,6 +49,7 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
   };
 
   const users = Object.values(roomState.users).filter(u => u.role !== "ScrumMaster");
+  const votedCount = users.filter(u => u.vote !== null).length;
   const isRevealed = roomState.status === "revealed";
   const method = roomState.calculationMethod || "sumByRole";
   const manualSelections = roomState.manualModeSelections || {};
@@ -109,8 +110,17 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
           <div className="flex items-center justify-center sm:justify-start gap-4 mt-1">
             <p className="text-slate-400 text-xs sm:text-sm font-medium flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              {users.length} usuário{users.length !== 1 ? "s" : ""} online
+              {users.length} online
             </p>
+            {currentUser.role === "ScrumMaster" && (
+              <>
+                <div className="h-4 w-[1px] bg-white/10"></div>
+                <p className="text-slate-400 text-xs sm:text-sm font-medium flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+                  {votedCount}/{users.length} votaram
+                </p>
+              </>
+            )}
             <div className="h-4 w-[1px] bg-white/10"></div>
             <p className="text-slate-400 text-xs sm:text-sm font-medium">
               Método: <span className="text-cyan-400">{method === "average" ? "Média Simples" : "Mais Votado por Função"}</span>
@@ -287,7 +297,7 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
           )}
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3 sm:gap-4">
           {users
             .filter((user) => currentUser.role === "ScrumMaster" || user.id === currentUser.id)
             .map((user) => {
@@ -297,26 +307,26 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
               return (
                 <div
                   key={user.id}
-                  className={`flex flex-col items-center p-4 sm:p-6 rounded-2xl border transition-all duration-500 ${
+                  className={`flex flex-col items-center p-3 sm:p-4 rounded-2xl border transition-all duration-500 ${
                     user.vote !== null
                       ? "bg-slate-800/80 border-cyan-500/50"
                       : "bg-slate-900/50 border-white/10 border-dashed opacity-70"
                   }`}
                 >
-                  <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-full flex items-center justify-center font-bold text-base sm:text-xl mb-3 sm:mb-4 border-2 ${colors.iconBg}`}>
+                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-sm sm:text-base mb-2 sm:mb-3 border-2 ${colors.iconBg}`}>
                     {user.name.charAt(0).toUpperCase()}
                   </div>
-                  <span className="font-bold text-slate-200 truncate w-full text-center mb-1 text-sm sm:text-base">
+                  <span className="font-bold text-slate-200 truncate w-full text-center mb-1 text-xs sm:text-sm">
                     {user.name}
                   </span>
                   <span
-                    className={`text-[8px] sm:text-[10px] font-bold px-2 py-0.5 sm:py-1 rounded-md mb-3 sm:mb-5 uppercase tracking-widest ${colors.badge}`}
+                    className={`text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded-md mb-2 sm:mb-3 uppercase tracking-widest ${colors.badge}`}
                   >
                     {user.role}
                   </span>
 
                   <div
-                    className={`w-12 h-16 sm:w-16 sm:h-20 rounded-xl flex items-center justify-center text-2xl sm:text-3xl font-black border-2 transition-all duration-500 ${
+                    className={`w-10 h-14 sm:w-12 sm:h-16 rounded-xl flex items-center justify-center text-xl sm:text-2xl font-black border-2 transition-all duration-500 ${
                       user.vote !== null
                         ? (isRevealed && currentUser.role === "ScrumMaster") || user.id === currentUser.id
                           ? "bg-gradient-to-br from-slate-700 to-slate-800 border-white/20 text-white"
