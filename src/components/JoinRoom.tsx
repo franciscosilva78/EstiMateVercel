@@ -9,15 +9,18 @@ export function JoinRoom({ onJoin }: JoinRoomProps) {
   const [role, setRole] = useState<string>("Dev");
   const [customRole, setCustomRole] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setError("");
     if (name.trim()) {
       setIsLoading(true);
       const finalRole = role === "Outro" ? customRole.trim() || "Outro" : role;
       try {
         await onJoin(name.trim(), finalRole);
-      } catch (error) {
+      } catch (err: any) {
+        setError(err.message || "Erro ao entrar na sala");
         setIsLoading(false);
       }
     }
@@ -95,6 +98,13 @@ export function JoinRoom({ onJoin }: JoinRoomProps) {
             />
           )}
         </div>
+        
+        {error && (
+          <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium text-center animate-pulse">
+            {error}
+          </div>
+        )}
+
         <button
           type="submit"
           disabled={!name.trim() || isLoading}
