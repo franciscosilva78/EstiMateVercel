@@ -100,7 +100,16 @@ export default function App() {
   const handleJoin = async (name: string, role: string) => {
     if (!isAuthReady || !roomId) return;
     
-    const newUser: User = { id: auth.currentUser!.uid, name, role, vote: null };
+    if (roomState) {
+      const nameExists = Object.values(roomState.users).some(
+        (u) => u.name.toLowerCase() === name.trim().toLowerCase() && u.id !== auth.currentUser!.uid
+      );
+      if (nameExists) {
+        throw new Error("Este nome já está em uso na sala.");
+      }
+    }
+
+    const newUser: User = { id: auth.currentUser!.uid, name: name.trim(), role, vote: null };
     
     try {
       const roomRef = doc(db, "rooms", roomId);
@@ -110,7 +119,7 @@ export default function App() {
       setUser(newUser);
     } catch (error) {
       console.error("Error joining room:", error);
-      throw error;
+      throw new Error("Erro ao conectar com o servidor.");
     }
   };
 
