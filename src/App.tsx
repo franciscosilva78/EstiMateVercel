@@ -101,7 +101,7 @@ export default function App() {
     if (!isAuthReady || !roomId) return;
     
     if (roomState) {
-      const nameExists = Object.values(roomState.users).some(
+      const nameExists = (Object.values(roomState.users) as User[]).some(
         (u) => u.name.toLowerCase() === name.trim().toLowerCase() && u.id !== auth.currentUser!.uid
       );
       if (nameExists) {
@@ -156,7 +156,7 @@ export default function App() {
     }
   };
 
-  const handleCalculationChange = async (method: "average" | "sumByRole") => {
+  const handleCalculationChange = async (method: "average" | "sumByRole" | "mostVotedOverall") => {
     if (roomId) {
       const roomRef = doc(db, "rooms", roomId);
       await updateDoc(roomRef, { calculationMethod: method });
@@ -172,6 +172,13 @@ export default function App() {
     }
   };
 
+  const handleThemeChange = async (theme: "default" | "cyberpunk" | "matrix" | "ocean") => {
+    if (roomId) {
+      const roomRef = doc(db, "rooms", roomId);
+      await updateDoc(roomRef, { theme });
+    }
+  };
+
   const handleDeleteRoom = async () => {
     if (roomId) {
       const roomRef = doc(db, "rooms", roomId);
@@ -180,7 +187,7 @@ export default function App() {
   };
 
   return (
-    <Layout>
+    <Layout theme={roomState?.theme || "default"}>
       {!roomId ? (
         <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
           <div className="w-full max-w-md p-6 sm:p-8 rounded-3xl bg-slate-900/50 border border-white/10 shadow-[0_0_40px_-10px_rgba(168,85,247,0.2)] backdrop-blur-sm">
@@ -211,7 +218,7 @@ export default function App() {
           </div>
         </div>
       ) : !user ? (
-        <JoinRoom onJoin={handleJoin} />
+        <JoinRoom onJoin={handleJoin} theme={roomState?.theme} />
       ) : (
         <Room
           roomState={roomState}
@@ -222,6 +229,7 @@ export default function App() {
           onDelete={handleDeleteRoom}
           onCalculationChange={handleCalculationChange}
           onSelectManualMode={handleSelectManualMode}
+          onThemeChange={handleThemeChange}
         />
       )}
     </Layout>

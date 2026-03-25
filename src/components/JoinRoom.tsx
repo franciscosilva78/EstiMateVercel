@@ -2,14 +2,46 @@ import { useState, FormEvent } from "react";
 
 interface JoinRoomProps {
   onJoin: (name: string, role: string) => Promise<void>;
+  theme?: string;
 }
 
-export function JoinRoom({ onJoin }: JoinRoomProps) {
+const getThemeUI = (theme?: string) => {
+  switch (theme) {
+    case "cyberpunk": return {
+      primaryBtn: "bg-gradient-to-r from-pink-500 to-yellow-500 shadow-[0_0_20px_-5px_rgba(236,72,153,0.6)] hover:shadow-[0_0_30px_-5px_rgba(236,72,153,0.8)] text-slate-900",
+      textGradient: "from-pink-500 to-yellow-500",
+      cardBorder: "border-pink-500/20 shadow-[0_0_40px_-10px_rgba(236,72,153,0.2)]",
+      inputFocus: "focus:ring-pink-500 focus:border-pink-500",
+    };
+    case "matrix": return {
+      primaryBtn: "bg-gradient-to-r from-emerald-500 to-teal-500 shadow-[0_0_20px_-5px_rgba(16,185,129,0.6)] hover:shadow-[0_0_30px_-5px_rgba(16,185,129,0.8)] text-slate-900",
+      textGradient: "from-emerald-400 to-teal-500",
+      cardBorder: "border-emerald-500/20 shadow-[0_0_40px_-10px_rgba(16,185,129,0.2)]",
+      inputFocus: "focus:ring-emerald-500 focus:border-emerald-500",
+    };
+    case "ocean": return {
+      primaryBtn: "bg-gradient-to-r from-blue-400 to-cyan-500 shadow-[0_0_20px_-5px_rgba(56,187,248,0.6)] hover:shadow-[0_0_30px_-5px_rgba(56,187,248,0.8)] text-slate-900",
+      textGradient: "from-blue-400 to-cyan-500",
+      cardBorder: "border-cyan-500/20 shadow-[0_0_40px_-10px_rgba(56,187,248,0.2)]",
+      inputFocus: "focus:ring-cyan-500 focus:border-cyan-500",
+    };
+    default: return {
+      primaryBtn: "bg-gradient-to-r from-cyan-500 to-purple-600 shadow-[0_0_20px_-5px_rgba(34,211,238,0.4)] hover:shadow-[0_0_30px_-5px_rgba(34,211,238,0.6)] text-white",
+      textGradient: "from-cyan-400 to-purple-500",
+      cardBorder: "border-white/10 shadow-[0_0_40px_-10px_rgba(34,211,238,0.2)]",
+      inputFocus: "focus:ring-cyan-500 focus:border-cyan-500",
+    };
+  }
+};
+
+export function JoinRoom({ onJoin, theme }: JoinRoomProps) {
   const [name, setName] = useState("");
   const [role, setRole] = useState<string>("Dev");
   const [customRole, setCustomRole] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const ui = getThemeUI(theme);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -27,8 +59,8 @@ export function JoinRoom({ onJoin }: JoinRoomProps) {
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 sm:mt-20 p-6 sm:p-8 rounded-3xl bg-slate-900/50 border border-white/10 shadow-[0_0_40px_-10px_rgba(34,211,238,0.2)] backdrop-blur-sm">
-      <h2 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 text-center bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
+    <div className={`max-w-md mx-auto mt-10 sm:mt-20 p-6 sm:p-8 rounded-3xl bg-slate-900/50 border backdrop-blur-sm transition-all duration-1000 ${ui.cardBorder}`}>
+      <h2 className={`text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 text-center bg-gradient-to-r ${ui.textGradient} bg-clip-text text-transparent transition-colors duration-1000`}>
         Entrar na Sessão
       </h2>
       <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
@@ -38,7 +70,7 @@ export function JoinRoom({ onJoin }: JoinRoomProps) {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-white/10 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-all text-white placeholder-slate-600 font-medium text-sm sm:text-base"
+            className={`w-full px-4 py-3 rounded-xl bg-slate-950 border border-white/10 focus:ring-2 outline-none transition-all text-white placeholder-slate-600 font-medium text-sm sm:text-base ${ui.inputFocus}`}
             placeholder="Digite seu nome"
             required
             autoFocus
@@ -92,7 +124,7 @@ export function JoinRoom({ onJoin }: JoinRoomProps) {
               type="text"
               value={customRole}
               onChange={(e) => setCustomRole(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-white/10 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-white placeholder-slate-600 font-medium text-sm sm:text-base"
+              className={`w-full px-4 py-3 rounded-xl bg-slate-950 border border-white/10 focus:ring-2 outline-none transition-all text-white placeholder-slate-600 font-medium text-sm sm:text-base ${ui.inputFocus}`}
               placeholder="Digite sua função (ex: Designer)"
               required
             />
@@ -108,7 +140,7 @@ export function JoinRoom({ onJoin }: JoinRoomProps) {
         <button
           type="submit"
           disabled={!name.trim() || isLoading}
-          className="w-full py-3.5 sm:py-4 bg-gradient-to-r from-cyan-500 to-purple-600 text-white rounded-xl font-bold text-base sm:text-lg shadow-[0_0_20px_-5px_rgba(34,211,238,0.4)] hover:shadow-[0_0_30px_-5px_rgba(34,211,238,0.6)] disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-[1.02]"
+          className={`w-full py-3.5 sm:py-4 rounded-xl font-bold text-base sm:text-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-[1.02] ${ui.primaryBtn}`}
         >
           {isLoading ? "Entrando..." : "Entrar na Sala"}
         </button>
