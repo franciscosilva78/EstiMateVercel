@@ -1,8 +1,6 @@
-import { useState, memo, useCallback, useMemo } from "react";
+import { useState } from "react";
 import { RoomState, User } from "../types";
 import { Share, Eye, RotateCcw, Trash2, Palette } from "lucide-react";
-import { useFocusManagement, useScreenReaderAnnouncements } from "../hooks/useAccessibility";
-import { useStableMemo } from "../utils/performance";
 
 interface RoomProps {
   roomState: RoomState | null;
@@ -130,11 +128,8 @@ const getThemeUI = (theme?: string) => {
   }
 };
 
-const RoomComponent = memo(({ roomState, currentUser, onVote, onReveal, onReset, onDelete, onCalculationChange, onSelectManualMode, onThemeChange }: RoomProps) => {
+export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDelete, onCalculationChange, onSelectManualMode, onThemeChange }: RoomProps) {
   const [copied, setCopied] = useState(false);
-
-  const { announce } = useScreenReaderAnnouncements();
-  const { registerFocusableElement, handleKeyboardNavigation } = useFocusManagement();
 
   if (!roomState) {
     return (
@@ -148,24 +143,15 @@ const RoomComponent = memo(({ roomState, currentUser, onVote, onReveal, onReset,
     );
   }
 
-  const handleShare = useCallback(() => {
+  const handleShare = () => {
     const shareUrl = window.location.origin + window.location.pathname;
     navigator.clipboard.writeText(shareUrl);
     setCopied(true);
-    announce("Link da sala copiado para a área de transferência");
     setTimeout(() => setCopied(false), 2000);
-  }, [announce]);
+  };
 
-  const users = useMemo(() =>
-    Object.values(roomState.users).filter(u => u.role !== "ScrumMaster"),
-    [roomState.users]
-  );
-
-  const votedCount = useMemo(() =>
-    users.filter(u => u.vote !== null).length,
-    [users]
-  );
-
+  const users = Object.values(roomState.users).filter(u => u.role !== "ScrumMaster");
+  const votedCount = users.filter(u => u.vote !== null).length;
   const isRevealed = roomState.status === "revealed";
   const method = roomState.calculationMethod || "sumByRole";
   const manualSelections = roomState.manualModeSelections || {};
@@ -194,78 +180,55 @@ const RoomComponent = memo(({ roomState, currentUser, onVote, onReveal, onReset,
     };
   };
 
-  // Group users by role dynamically - memoized
-  const roles = useMemo(() =>
-    Array.from(new Set(users.map(u => u.role))),
-    [users]
-  );
+  // Group users by role dynamically
+  const roles = Array.from(new Set(users.map(u => u.role)));
+  
+  const allVotes = users.filter(u => u.vote !== null).map(u => u.vote as number);
+  const overallStats = getVoteStats(allVotes);
+  let overallResult = 0;
+  if (method === "average") {
+    overallResult = allVotes.length ? allVotes.reduce((a, b) => a + b, 0) / allVotes.length : 0;
+  } else {
+    overallResult = manualSelections['overall'] !== undefined ? manualSelections['overall'] : overallStats.autoMode;
+  }
 
-  // Memoize vote calculations
-  const { allVotes, overallStats, overallResult, roleResults, totalSum } = useMemo(() => {
-    const allVotes = users.filter(u => u.vote !== null).map(u => u.vote as number);
-    const overallStats = getVoteStats(allVotes);
-    let overallResult = 0;
+  const roleResults: Record<string, { result: number, stats: ReturnType<typeof getVoteStats> }> = {};
+  let totalSum = 0;
+
+  roles.forEach(role => {
+    const roleVotes = users.filter(u => u.role === role && u.vote !== null).map(u => u.vote as number);
+    const stats = getVoteStats(roleVotes);
+    
+    let result = 0;
     if (method === "average") {
-      overallResult = allVotes.length ? allVotes.reduce((a, b) => a + b, 0) / allVotes.length : 0;
+      result = roleVotes.length ? roleVotes.reduce((a, b) => a + b, 0) / roleVotes.length : 0;
     } else {
-      overallResult = manualSelections['overall'] !== undefined ? manualSelections['overall'] : overallStats.autoMode;
+      result = manualSelections[role] !== undefined ? manualSelections[role] : stats.autoMode;
     }
+    
+    roleResults[role] = { result, stats };
+    totalSum += result;
+  });
 
-    const roleResults: Record<string, { result: number, stats: ReturnType<typeof getVoteStats> }> = {};
-    let totalSum = 0;
-
-    roles.forEach(role => {
-      const roleVotes = users.filter(u => u.role === role && u.vote !== null).map(u => u.vote as number);
-      const stats = getVoteStats(roleVotes);
-
-      let result = 0;
-      if (method === "average") {
-        result = roleVotes.length ? roleVotes.reduce((a, b) => a + b, 0) / roleVotes.length : 0;
-      } else {
-        result = manualSelections[role] !== undefined ? manualSelections[role] : stats.autoMode;
-      }
-
-      roleResults[role] = { result, stats };
-      totalSum += result;
-    });
-
-    return { allVotes, overallStats, overallResult, roleResults, totalSum };
-  }, [users, method, manualSelections, roles]);
-
-  // Memoize theme functions
-  const themeTextGradient = useStableMemo(
-    getThemeTextGradient(roomState?.theme),
-    [roomState?.theme]
-  );
-
-  const themeShadow = useStableMemo(
-    getThemeShadow(roomState?.theme),
-    [roomState?.theme]
-  );
-
-  const ui = useStableMemo(
-    getThemeUI(roomState?.theme),
-    [roomState?.theme]
-  );
-
-  // Helper functions memoized
-  const getThemeTextGradient = useCallback((theme?: string) => {
+  const getThemeTextGradient = (theme?: string) => {
     switch (theme) {
       case "cyberpunk": return "from-pink-500 to-yellow-500";
       case "matrix": return "from-emerald-400 to-teal-500";
       case "ocean": return "from-blue-400 to-cyan-500";
       default: return "from-cyan-400 to-purple-500";
     }
-  }, []);
+  };
 
-  const getThemeShadow = useCallback((theme?: string) => {
+  const getThemeShadow = (theme?: string) => {
     switch (theme) {
       case "cyberpunk": return "shadow-[0_0_40px_-10px_rgba(236,72,153,0.4)]";
       case "matrix": return "shadow-[0_0_40px_-10px_rgba(16,185,129,0.4)]";
       case "ocean": return "shadow-[0_0_40px_-10px_rgba(56,187,248,0.4)]";
       default: return "shadow-[0_0_40px_-10px_rgba(168,85,247,0.4)]";
     }
-  }, []);
+  };
+
+  const ui = getThemeUI(roomState.theme);
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -306,15 +269,10 @@ const RoomComponent = memo(({ roomState, currentUser, onVote, onReveal, onReset,
           )}
           <button
             onClick={handleShare}
-            aria-label={copied ? "Link copiado para área de transferência" : "Compartilhar link da sala"}
-            aria-describedby="share-button-help"
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl font-bold transition-all border text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-slate-950 ${ui.secondaryBtn}`}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl font-bold transition-all border text-xs sm:text-sm ${ui.secondaryBtn}`}
           >
-            <Share size={16} aria-hidden="true" />
+            <Share size={16} />
             {copied ? "COPIADO" : "COMPARTILHAR"}
-            <span id="share-button-help" className="sr-only">
-              {copied ? "Link da sala foi copiado" : "Copia o link da sala para compartilhar"}
-            </span>
           </button>
         </div>
       </div>
@@ -359,53 +317,27 @@ const RoomComponent = memo(({ roomState, currentUser, onVote, onReveal, onReset,
 
       {/* Voting Options */}
       {!isRevealed && currentUser.role !== "ScrumMaster" && (
-        <section
-          aria-labelledby="voting-heading"
-          className={`p-4 sm:p-8 rounded-3xl border backdrop-blur-sm transition-all duration-1000 ${ui.cardBg} ${ui.cardBorder} ${themeShadow}`}
-        >
-          <h3
-            id="voting-heading"
-            className="text-xs sm:text-sm font-bold text-slate-400 mb-4 sm:mb-6 text-center uppercase tracking-widest"
-          >
-            Selecione a Estimativa
-          </h3>
-          <div
-            role="group"
-            aria-labelledby="voting-heading"
-            className="grid grid-cols-4 sm:flex sm:flex-wrap gap-2 sm:gap-3 justify-center"
-            onKeyDown={handleKeyboardNavigation}
-          >
-            {VOTING_OPTIONS.map((option, index) => {
+        <div className={`p-4 sm:p-8 rounded-3xl border backdrop-blur-sm transition-all duration-1000 ${ui.cardBg} ${ui.cardBorder} ${getThemeShadow(roomState.theme)}`}>
+          <h3 className="text-xs sm:text-sm font-bold text-slate-400 mb-4 sm:mb-6 text-center uppercase tracking-widest">Selecione a Estimativa</h3>
+          <div className="grid grid-cols-4 sm:flex sm:flex-wrap gap-2 sm:gap-3 justify-center">
+            {VOTING_OPTIONS.map((option) => {
               const isSelected = currentUser.vote === option;
               return (
                 <button
                   key={option}
-                  ref={registerFocusableElement}
                   onClick={() => onVote(option)}
-                  aria-label={`Votar ${option} pontos de story`}
-                  aria-pressed={isSelected}
-                  aria-describedby={`vote-${option}-help`}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      onVote(option);
-                    }
-                  }}
-                  className={`h-14 sm:w-14 sm:h-16 rounded-xl font-bold text-base sm:text-lg transition-all flex items-center justify-center border focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-slate-950 ${
+                  className={`h-14 sm:w-14 sm:h-16 rounded-xl font-bold text-base sm:text-lg transition-all flex items-center justify-center border ${
                     isSelected
                       ? ui.voteSelected
                       : `bg-slate-950 text-slate-300 border-white/10 ${ui.voteHover}`
                   }`}
                 >
                   {option}
-                  <span id={`vote-${option}-help`} className="sr-only">
-                    {isSelected ? "Voto atual selecionado" : "Clique para votar"}
-                  </span>
                 </button>
               );
             })}
           </div>
-        </section>
+        </div>
       )}
 
       {/* Results */}
@@ -523,42 +455,27 @@ const RoomComponent = memo(({ roomState, currentUser, onVote, onReveal, onReset,
             <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2 sm:gap-3">
               <button
                 onClick={onDelete}
-                aria-label="Excluir sala permanentemente"
-                aria-describedby="delete-button-help"
-                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl font-bold transition-all border border-red-500/30 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-slate-950"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl font-bold transition-all border border-red-500/30 text-xs sm:text-sm"
               >
-                <Trash2 size={16} aria-hidden="true" />
+                <Trash2 size={16} />
                 EXCLUIR SALA
-                <span id="delete-button-help" className="sr-only">
-                  Remove a sala permanentemente. Esta ação não pode ser desfeita.
-                </span>
               </button>
-
+              
               {!isRevealed ? (
                 <button
                   onClick={onReveal}
-                  aria-label="Revelar todos os votos da sessão"
-                  aria-describedby="reveal-button-help"
-                  className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold transition-all text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-slate-950 ${ui.primaryBtn}`}
+                  className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold transition-all text-xs sm:text-sm ${ui.primaryBtn}`}
                 >
-                  <Eye size={16} aria-hidden="true" />
+                  <Eye size={16} />
                   REVELAR VOTOS
-                  <span id="reveal-button-help" className="sr-only">
-                    Revela os votos de todos os participantes e calcula o resultado
-                  </span>
                 </button>
               ) : (
                 <button
                   onClick={onReset}
-                  aria-label="Reiniciar sessão de votação"
-                  aria-describedby="reset-button-help"
-                  className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold transition-all border text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-slate-950 ${ui.secondaryBtn}`}
+                  className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold transition-all border text-xs sm:text-sm ${ui.secondaryBtn}`}
                 >
-                  <RotateCcw size={16} aria-hidden="true" />
+                  <RotateCcw size={16} />
                   REINICIAR
-                  <span id="reset-button-help" className="sr-only">
-                    Limpa todos os votos e inicia uma nova rodada de votação
-                  </span>
                 </button>
               )}
             </div>
@@ -608,8 +525,4 @@ const RoomComponent = memo(({ roomState, currentUser, onVote, onReveal, onReset,
       </div>
     </div>
   );
-});
-
-RoomComponent.displayName = 'Room';
-
-export { RoomComponent as Room };
+}
