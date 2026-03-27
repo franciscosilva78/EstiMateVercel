@@ -158,6 +158,30 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
   const method = roomState.calculationMethod || "sumByRole";
   const manualSelections = roomState.manualModeSelections || {};
 
+  // Helper to get vote distribution and modes
+  const getVoteStats = (votes: number[]) => {
+    if (votes.length === 0) return { distribution: {}, modes: [], autoMode: 0 };
+    const counts: Record<number, number> = {};
+    let maxCount = 0;
+
+    votes.forEach(v => {
+      counts[v] = (counts[v] || 0) + 1;
+      if (counts[v] > maxCount) {
+        maxCount = counts[v];
+      }
+    });
+
+    const modes = Object.keys(counts)
+      .map(Number)
+      .filter(v => counts[v] === maxCount);
+
+    return { 
+      distribution: counts, 
+      modes, 
+      autoMode: Math.max(...modes) // Default to highest if tie
+    };
+  };
+
   // Helper to get overall vote distribution with roles
   const getOverallDistribution = (usersList: User[]) => {
     const distribution: Record<number, { total: number, roles: Record<string, number> }> = {};
@@ -201,28 +225,21 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
   }
 
   // Calculate totalSum for 'sumByRole' and 'average'
+  const roleResults: Record<string, { result: number, stats: ReturnType<typeof getVoteStats> }> = {};
   let totalSum = 0;
+
   roles.forEach(role => {
     const roleVotes = users.filter(u => u.role === role && u.vote !== null).map(u => u.vote as number);
-    if (roleVotes.length === 0) return;
+    const stats = getVoteStats(roleVotes);
     
     let result = 0;
     if (method === "average") {
-      result = roleVotes.reduce((a, b) => a + b, 0) / roleVotes.length;
+      result = roleVotes.length ? roleVotes.reduce((a, b) => a + b, 0) / roleVotes.length : 0;
     } else {
-      // For sumByRole, we need the mode of this role
-      const counts: Record<number, number> = {};
-      let maxCount = 0;
-      roleVotes.forEach(v => {
-        counts[v] = (counts[v] || 0) + 1;
-        if (counts[v] > maxCount) maxCount = counts[v];
-      });
-      const modes = Object.keys(counts).map(Number).filter(v => counts[v] === maxCount);
-      const autoMode = modes.length > 0 ? Math.max(...modes) : 0;
-      
-      // We still use manualSelections if it was set previously, otherwise autoMode
-      result = manualSelections[role] !== undefined ? manualSelections[role] : autoMode;
+      result = manualSelections[role] !== undefined ? manualSelections[role] : stats.autoMode;
     }
+    
+    roleResults[role] = { result, stats };
     totalSum += result;
   });
 
@@ -359,66 +376,126 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
       {/* Results */}
       {isRevealed && currentUser.role === "ScrumMaster" && (
         <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row justify-center items-start gap-4 sm:gap-6">
-            
-            {/* DISTRIBUIÇÃO GERAL (Left) */}
-            <div className="flex flex-col gap-4 flex-1 min-w-[200px] max-w-[400px] w-full">
-              <div className={`p-5 rounded-3xl border transition-all duration-1000 ${ui.cardBorder} ${ui.cardBg}`}>
-                <h4 className={`text-xs font-bold ${ui.accentText} uppercase tracking-widest mb-4`}>{t('generalDistribution')}</h4>
-                <div className="space-y-3">
-                  {Object.entries(overallStats.distribution).sort((a, b) => Number(b[0]) - Number(a[0])).map(([voteStr, data]) => {
-                    const vote = Number(voteStr);
-                    const isMode = overallStats.modes.includes(vote);
-                    const isSelected = overallResult === vote;
-                    
-                    // Format role string: (1 Dev + 2 QA)
-                    const roleEntries = Object.entries(data.roles).map(([r, c]) => `${c} ${r}`);
-                    const roleString = roleEntries.length > 0 ? `(${roleEntries.join(' + ')})` : '';
+          {method === "mostVotedOverall" ? (
+            <div className="flex flex-col sm:flex-row justify-center items-start gap-4 sm:gap-6">
+              
+              {/* DISTRIBUIÇÃO GERAL (Left) */}
+              <div className="flex flex-col gap-4 flex-1 min-w-[200px] max-w-[400px] w-full">
+                <div className={`p-5 rounded-3xl border transition-all duration-1000 ${ui.cardBorder} ${ui.cardBg}`}>
+                  <h4 className={`text-xs font-bold ${ui.accentText} uppercase tracking-widest mb-4`}>{t('generalDistribution')}</h4>
+                  <div className="space-y-3">
+                    {Object.entries(overallStats.distribution).sort((a, b) => Number(b[0]) - Number(a[0])).map(([voteStr, data]) => {
+                      const vote = Number(voteStr);
+                      const isMode = overallStats.modes.includes(vote);
+                      const isSelected = overallResult === vote;
+                      
+                      // Format role string: (1 Dev + 2 QA)
+                      const roleEntries = Object.entries(data.roles).map(([r, c]) => `${c} ${r}`);
+                      const roleString = roleEntries.length > 0 ? `(${roleEntries.join(' + ')})` : '';
 
-                    return (
-                      <button
-                        key={vote}
-                        disabled={!isMode || overallStats.modes.length <= 1}
-                        onClick={() => onSelectManualMode('overall', vote)}
-                        className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${
-                          isSelected 
-                            ? `${ui.userRevealedBox} shadow-[0_0_15px_rgba(255,255,255,0.2)]` 
-                            : isMode 
-                              ? `${ui.userVotedBox} hover:${ui.accentBorder}` 
-                              : `${ui.userEmptyBox} opacity-60`
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-lg font-black text-white">{vote}</span>
-                          <span className="text-sm font-bold text-slate-300">- {data.total} {data.total !== 1 ? t('votes') : t('vote')} {roleString}</span>
-                        </div>
-                        {isMode && overallStats.modes.length > 1 && (
-                          <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase">{t('tie')}</span>
-                        )}
-                      </button>
-                    );
-                  })}
+                      return (
+                        <button
+                          key={vote}
+                          disabled={!isMode || overallStats.modes.length <= 1}
+                          onClick={() => onSelectManualMode('overall', vote)}
+                          className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${
+                            isSelected 
+                              ? `${ui.userRevealedBox} shadow-[0_0_15px_rgba(255,255,255,0.2)]` 
+                              : isMode 
+                                ? `${ui.userVotedBox} hover:${ui.accentBorder}` 
+                                : `${ui.userEmptyBox} opacity-60`
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-lg font-black text-white">{vote}</span>
+                            <span className="text-sm font-bold text-slate-300">- {data.total} {data.total !== 1 ? t('votes') : t('vote')} {roleString}</span>
+                          </div>
+                          {isMode && overallStats.modes.length > 1 && (
+                            <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase">{t('tie')}</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* VOTAÇÃO GERAL (Right) */}
+              <div className="flex flex-col gap-4 flex-1 min-w-[200px] max-w-[300px] w-full">
+                <div className={`p-4 sm:p-6 rounded-3xl border flex flex-col items-center justify-center relative overflow-hidden bg-gradient-to-br transition-all duration-1000 ${ui.totalCard}`}>
+                  <span className={`font-bold uppercase tracking-widest text-[10px] sm:text-xs mb-1 sm:mb-2 relative z-10 ${ui.totalText}`}>
+                    {t('generalVoting')}
+                  </span>
+                  <span className="text-3xl sm:text-5xl font-bold text-white relative z-10">
+                    {overallResult > 0 ? overallResult.toFixed(1) : "-"}
+                  </span>
+                </div>
+              </div>
+
+            </div>
+          ) : (
+            <div className="flex flex-wrap justify-center items-start gap-4 sm:gap-6">
+              {roles.map((role, idx) => {
+                const { result, stats } = roleResults[role];
+                const colors = getColorClasses(idx, roomState.theme);
+                return (
+                  <div key={role} className="flex flex-col gap-4 flex-1 min-w-[200px] max-w-[300px]">
+                    <div className={`p-4 sm:p-6 rounded-3xl border ${colors.border} backdrop-blur-sm ${colors.shadow} flex flex-col items-center justify-center relative overflow-hidden transition-all duration-1000 ${ui.cardBg}`}>
+                      <span className={`${colors.text} font-bold uppercase tracking-widest text-[10px] sm:text-xs mb-1 sm:mb-2 relative z-10`}>
+                        {method === "average" ? `Média ${role}` : `Votação ${role}`}
+                      </span>
+                      <span className="text-3xl sm:text-5xl font-bold text-white relative z-10">{result > 0 ? result.toFixed(method === "average" ? 2 : 1) : "-"}</span>
+                    </div>
+
+                    <div className={`p-5 rounded-3xl border transition-all duration-1000 ${colors.border} ${ui.cardBg}`}>
+                      <h4 className={`text-xs font-bold ${colors.text} uppercase tracking-widest mb-4`}>Distribuição de Votos {role}</h4>
+                      <div className="space-y-3">
+                        {Object.entries(stats.distribution).sort((a, b) => Number(b[0]) - Number(a[0])).map(([vote, count]) => {
+                          const isMode = stats.modes.includes(Number(vote));
+                          const isSelected = result === Number(vote);
+                          return (
+                            <button
+                              key={vote}
+                              disabled={!isMode || stats.modes.length <= 1}
+                              onClick={() => onSelectManualMode(role, Number(vote))}
+                              className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${
+                                isSelected 
+                                  ? `${colors.bg} ${colors.borderActive} ${colors.shadow}` 
+                                  : isMode 
+                                    ? `bg-slate-800 ${colors.border} hover:${colors.borderActive}` 
+                                    : "bg-slate-950/50 border-white/5 opacity-60"
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <span className="text-lg font-black text-white">{vote}</span>
+                                {isMode && stats.modes.length > 1 && (
+                                  <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase">{t('tie')}</span>
+                                )}
+                              </div>
+                              <span className="text-sm font-bold text-slate-400">{count} {count !== 1 ? t('votes') : t('vote')}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              
+              <div className="flex flex-col gap-4 flex-1 min-w-[200px] max-w-[300px]">
+                <div className={`p-4 sm:p-6 rounded-3xl border flex flex-col items-center justify-center relative overflow-hidden bg-gradient-to-br transition-all duration-1000 ${ui.totalCard}`}>
+                  <span className={`font-bold uppercase tracking-widest text-[10px] sm:text-xs mb-1 sm:mb-2 relative z-10 ${ui.totalText}`}>
+                    {method === "average" ? t('methodAverage') : t('methodSumByRole')}
+                  </span>
+                  <span className="text-3xl sm:text-5xl font-bold text-white relative z-10">
+                    {method === "average"
+                      ? (overallResult > 0 ? overallResult.toFixed(2) : "-")
+                      : (totalSum > 0 ? totalSum.toFixed(1) : "-")}
+                  </span>
                 </div>
               </div>
             </div>
-
-            {/* VOTAÇÃO GERAL (Right) */}
-            <div className="flex flex-col gap-4 flex-1 min-w-[200px] max-w-[300px] w-full">
-              <div className={`p-4 sm:p-6 rounded-3xl border flex flex-col items-center justify-center relative overflow-hidden bg-gradient-to-br transition-all duration-1000 ${ui.totalCard}`}>
-                <span className={`font-bold uppercase tracking-widest text-[10px] sm:text-xs mb-1 sm:mb-2 relative z-10 ${ui.totalText}`}>
-                  {method === "average" ? t('methodAverage') : method === "sumByRole" ? t('methodSumByRole') : t('generalVoting')}
-                </span>
-                <span className="text-3xl sm:text-5xl font-bold text-white relative z-10">
-                  {method === "average"
-                    ? (totalSum > 0 ? totalSum.toFixed(2) : "-")
-                    : method === "sumByRole"
-                      ? (totalSum > 0 ? totalSum.toFixed(1) : "-")
-                      : (overallResult > 0 ? overallResult.toFixed(1) : "-")}
-                </span>
-              </div>
-            </div>
-
-          </div>
+          )}
         </div>
       )}
 
