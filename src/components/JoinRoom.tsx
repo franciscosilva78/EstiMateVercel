@@ -1,4 +1,5 @@
 import { useState, FormEvent } from "react";
+import { useLanguage } from "../i18n/LanguageContext";
 
 interface JoinRoomProps {
   onJoin: (name: string, role: string) => Promise<void>;
@@ -35,6 +36,7 @@ const getThemeUI = (theme?: string) => {
 };
 
 export function JoinRoom({ onJoin, theme }: JoinRoomProps) {
+  const { t } = useLanguage();
   const [name, setName] = useState("");
   const [role, setRole] = useState<string>("Dev");
   const [customRole, setCustomRole] = useState("");
@@ -52,7 +54,7 @@ export function JoinRoom({ onJoin, theme }: JoinRoomProps) {
       try {
         await onJoin(name.trim(), finalRole);
       } catch (err: any) {
-        setError(err.message || "Erro ao entrar na sala");
+        setError(err.message || t('errorJoining'));
         setIsLoading(false);
       }
     }
@@ -61,23 +63,23 @@ export function JoinRoom({ onJoin, theme }: JoinRoomProps) {
   return (
     <div className={`max-w-md mx-auto mt-10 sm:mt-20 p-6 sm:p-8 rounded-3xl bg-slate-900/50 border backdrop-blur-sm transition-all duration-1000 ${ui.cardBorder}`}>
       <h2 className={`text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 text-center bg-gradient-to-r ${ui.textGradient} bg-clip-text text-transparent transition-colors duration-1000`}>
-        Entrar na Sessão
+        {t('joinSession')}
       </h2>
       <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
         <div>
-          <label className="block text-xs sm:text-sm font-bold text-slate-300 mb-2 uppercase tracking-wider">Seu Nome</label>
+          <label className="block text-xs sm:text-sm font-bold text-slate-300 mb-2 uppercase tracking-wider">{t('yourName')}</label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className={`w-full px-4 py-3 rounded-xl bg-slate-950 border border-white/10 focus:ring-2 outline-none transition-all text-white placeholder-slate-600 font-medium text-sm sm:text-base ${ui.inputFocus}`}
-            placeholder="Digite seu nome"
+            placeholder={t('yourNamePlaceholder')}
             required
             autoFocus
           />
         </div>
         <div>
-          <label className="block text-xs sm:text-sm font-bold text-slate-300 mb-2 uppercase tracking-wider">Selecione sua Função</label>
+          <label className="block text-xs sm:text-sm font-bold text-slate-300 mb-2 uppercase tracking-wider">{t('selectRole')}</label>
           <div className="flex gap-3 sm:gap-4 mb-3">
             <label className="flex-1 cursor-pointer">
               <input
@@ -115,7 +117,7 @@ export function JoinRoom({ onJoin, theme }: JoinRoomProps) {
                 className="peer sr-only"
               />
               <div className="text-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl bg-slate-950 border border-white/10 peer-checked:border-emerald-500 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-400 peer-checked:shadow-[0_0_15px_-3px_rgba(16,185,129,0.3)] font-bold transition-all text-xs sm:text-sm">
-                OUTRO
+                {t('other')}
               </div>
             </label>
           </div>
@@ -125,7 +127,7 @@ export function JoinRoom({ onJoin, theme }: JoinRoomProps) {
               value={customRole}
               onChange={(e) => setCustomRole(e.target.value)}
               className={`w-full px-4 py-3 rounded-xl bg-slate-950 border border-white/10 focus:ring-2 outline-none transition-all text-white placeholder-slate-600 font-medium text-sm sm:text-base ${ui.inputFocus}`}
-              placeholder="Digite sua função (ex: Designer)"
+              placeholder={t('otherRolePlaceholder')}
               required
             />
           )}
@@ -142,7 +144,7 @@ export function JoinRoom({ onJoin, theme }: JoinRoomProps) {
           disabled={!name.trim() || isLoading}
           className={`w-full py-3.5 sm:py-4 rounded-xl font-bold text-base sm:text-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-[1.02] ${ui.primaryBtn}`}
         >
-          {isLoading ? "Entrando..." : "Entrar na Sala"}
+          {isLoading ? t('joining') : t('joinRoomBtn')}
         </button>
       </form>
     </div>

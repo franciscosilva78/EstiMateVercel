@@ -6,7 +6,8 @@ import { Room } from "./components/Room";
 import { Layout } from "./components/Layout";
 import { db, auth } from "./firebase";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
-import { doc, setDoc, onSnapshot, updateDoc, deleteDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, onSnapshot, updateDoc, deleteDoc } from "firebase/firestore";
+import { LanguageProvider, useLanguage } from "./i18n/LanguageContext";
 
 const generateShortId = () => {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -17,12 +18,14 @@ const generateShortId = () => {
   return result;
 };
 
-export default function App() {
+function AppContent() {
+  const { t } = useLanguage();
   const [roomId, setRoomId] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [roomState, setRoomState] = useState<RoomState | null>(null);
   const [roomNameInput, setRoomNameInput] = useState("");
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [showManual, setShowManual] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -48,12 +51,16 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (roomId && user && isAuthReady) {
+    if (roomId && isAuthReady) {
       const roomRef = doc(db, "rooms", roomId);
       
       const unsubscribe = onSnapshot(roomRef, (docSnap) => {
         if (docSnap.exists()) {
-          setRoomState(docSnap.data() as RoomState);
+          const data = docSnap.data() as RoomState;
+          setRoomState(data);
+          if (auth.currentUser && data.users[auth.currentUser.uid]) {
+            setUser(data.users[auth.currentUser.uid]);
+          }
         } else {
           // Room deleted
           setRoomId(null);
@@ -67,7 +74,7 @@ export default function App() {
 
       return () => unsubscribe();
     }
-  }, [roomId, user, isAuthReady]);
+  }, [roomId, isAuthReady]);
 
   const handleCreateRoom = async (e: FormEvent) => {
     e.preventDefault();
@@ -89,7 +96,12 @@ export default function App() {
 
     try {
       await setDoc(doc(db, "rooms", newRoomId), newRoom);
-      window.history.pushState({}, "", `/room/${newRoomId}`);
+      
+      // Keep lang param if exists
+      const url = new URL(window.location.href);
+      url.pathname = `/room/${newRoomId}`;
+      window.history.pushState({}, "", url.toString());
+      
       setRoomId(newRoomId);
       setUser(scrumMaster);
     } catch (error) {
@@ -105,7 +117,7 @@ export default function App() {
         (u) => u.name.toLowerCase() === name.trim().toLowerCase() && u.id !== auth.currentUser!.uid
       );
       if (nameExists) {
-        throw new Error("Este nome já está em uso na sala.");
+        throw new Error(t('nameInUse'));
       }
     }
 
@@ -119,7 +131,7 @@ export default function App() {
       setUser(newUser);
     } catch (error) {
       console.error("Error joining room:", error);
-      throw new Error("Erro ao conectar com o servidor.");
+      throw new Error(t('errorConnecting'));
     }
   };
 
@@ -192,17 +204,17 @@ export default function App() {
         <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
           <div className="w-full max-w-md p-6 sm:p-8 rounded-3xl bg-slate-900/50 border border-white/10 shadow-[0_0_40px_-10px_rgba(168,85,247,0.2)] backdrop-blur-sm">
             <h1 className="text-3xl sm:text-4xl font-bold mb-6 sm:mb-8 text-center bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
-              Criar Sala
+              {t('createRoom')}
             </h1>
             <form onSubmit={handleCreateRoom} className="space-y-4 sm:space-y-6">
               <div>
-                <label className="block text-xs sm:text-sm font-bold text-slate-300 mb-2 uppercase tracking-wider">Nome da Sala</label>
+                <label className="block text-xs sm:text-sm font-bold text-slate-300 mb-2 uppercase tracking-wider">{t('roomName')}</label>
                 <input
                   type="text"
                   value={roomNameInput}
                   onChange={(e) => setRoomNameInput(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-white/10 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all text-white placeholder-slate-600 font-medium text-sm sm:text-base"
-                  placeholder="ex: Planejamento Sprint 42"
+                  placeholder={t('roomNamePlaceholder')}
                   required
                   autoFocus
                 />
@@ -212,9 +224,14 @@ export default function App() {
                 disabled={!roomNameInput.trim() || !isAuthReady}
                 className="w-full py-3.5 sm:py-4 bg-gradient-to-r from-cyan-500 to-purple-600 text-white rounded-xl font-bold text-base sm:text-lg shadow-[0_0_20px_-5px_rgba(168,85,247,0.5)] hover:shadow-[0_0_30px_-5px_rgba(168,85,247,0.6)] disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-[1.02]"
               >
-                {isAuthReady ? "Iniciar Sala" : "Conectando..."}
+                {isAuthReady ? t('startRoom') : t('connecting')}
               </button>
             </form>
+            <div className="mt-6 text-center">
+              <button onClick={() => setShowManual(true)} className="text-sm text-cyan-400 hover:text-cyan-300 underline transition-colors">
+                {t('userManual')}
+              </button>
+            </div>
           </div>
         </div>
       ) : !user ? (
@@ -232,6 +249,34 @@ export default function App() {
           onThemeChange={handleThemeChange}
         />
       )}
+
+      {showManual && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-white/10 p-6 sm:p-8 rounded-3xl max-w-lg w-full shadow-2xl">
+            <h2 className="text-2xl font-bold text-white mb-4 bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">{t('userManual')}</h2>
+            <p className="text-slate-300 mb-6 text-sm sm:text-base">{t('manualIntro')}</p>
+            <ul className="space-y-4 text-slate-400 text-sm sm:text-base">
+              <li className="flex gap-3"><span className="text-cyan-400 font-bold">1.</span> <span>{t('manualStep1').replace('1. ', '')}</span></li>
+              <li className="flex gap-3"><span className="text-cyan-400 font-bold">2.</span> <span>{t('manualStep2').replace('2. ', '')}</span></li>
+              <li className="flex gap-3"><span className="text-cyan-400 font-bold">3.</span> <span>{t('manualStep3').replace('3. ', '')}</span></li>
+              <li className="flex gap-3"><span className="text-cyan-400 font-bold">4.</span> <span>{t('manualStep4').replace('4. ', '')}</span></li>
+              <li className="flex gap-3"><span className="text-cyan-400 font-bold">5.</span> <span>{t('manualStep5').replace('5. ', '')}</span></li>
+              <li className="flex gap-3"><span className="text-cyan-400 font-bold">6.</span> <span>{t('manualStep6').replace('6. ', '')}</span></li>
+            </ul>
+            <button onClick={() => setShowManual(false)} className="mt-8 w-full py-3 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-700 transition-colors border border-white/10">
+              {t('close')}
+            </button>
+          </div>
+        </div>
+      )}
     </Layout>
+  );
+}
+
+export default function App() {
+  return (
+    <LanguageProvider>
+      <AppContent />
+    </LanguageProvider>
   );
 }

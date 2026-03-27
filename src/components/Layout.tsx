@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { useLanguage } from "../i18n/LanguageContext";
 
 export type ThemeType = "default" | "cyberpunk" | "matrix" | "ocean";
 
@@ -26,6 +27,7 @@ const themes = {
 };
 
 export function Layout({ children, theme = "default" }: { children: ReactNode, theme?: ThemeType }) {
+  const { lang, setLang } = useLanguage();
   const currentTheme = themes[theme] || themes.default;
 
   const getThemeOverlay = () => {
@@ -64,6 +66,17 @@ export function Layout({ children, theme = "default" }: { children: ReactNode, t
         <h1 className={`text-2xl font-bold bg-gradient-to-r ${currentTheme.text} bg-clip-text text-transparent tracking-tight transition-colors duration-1000`}>
           EstiMate
         </h1>
+        <div className="flex items-center gap-3 sm:gap-4">
+          <button onClick={() => setLang('pt')} className={`transition-all hover:scale-110 rounded-full overflow-hidden flex items-center justify-center ${lang === 'pt' ? 'opacity-100 ring-2 ring-cyan-400 ring-offset-2 ring-offset-slate-950' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="Português">
+            <img src="https://flagcdn.com/br.svg" alt="Português" className="w-6 h-6 sm:w-7 sm:h-7 object-cover" referrerPolicy="no-referrer" />
+          </button>
+          <button onClick={() => setLang('en')} className={`transition-all hover:scale-110 rounded-full overflow-hidden flex items-center justify-center ${lang === 'en' ? 'opacity-100 ring-2 ring-cyan-400 ring-offset-2 ring-offset-slate-950' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="English">
+            <img src="https://flagcdn.com/us.svg" alt="English" className="w-6 h-6 sm:w-7 sm:h-7 object-cover" referrerPolicy="no-referrer" />
+          </button>
+          <button onClick={() => setLang('es')} className={`transition-all hover:scale-110 rounded-full overflow-hidden flex items-center justify-center ${lang === 'es' ? 'opacity-100 ring-2 ring-cyan-400 ring-offset-2 ring-offset-slate-950' : 'opacity-40 grayscale hover:opacity-100 hover:grayscale-0'}`} title="Español">
+            <img src="https://flagcdn.com/es.svg" alt="Español" className="w-6 h-6 sm:w-7 sm:h-7 object-cover" referrerPolicy="no-referrer" />
+          </button>
+        </div>
       </header>
       <main className="max-w-5xl mx-auto p-4 sm:p-6 relative z-10">{children}</main>
     </div>

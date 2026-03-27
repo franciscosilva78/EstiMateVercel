@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { RoomState, User } from "../types";
 import { Share, Eye, RotateCcw, Trash2, Palette } from "lucide-react";
+import { useLanguage } from "../i18n/LanguageContext";
 
 interface RoomProps {
   roomState: RoomState | null;
@@ -129,15 +130,16 @@ const getThemeUI = (theme?: string) => {
 };
 
 export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDelete, onCalculationChange, onSelectManualMode, onThemeChange }: RoomProps) {
+  const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
 
   if (!roomState) {
     return (
       <div className="flex flex-col items-center justify-center py-32 space-y-4 px-4 text-center">
         <div className="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
-        <div className="text-cyan-400 font-bold tracking-widest uppercase text-sm animate-pulse">Estabelecendo Conexão...</div>
+        <div className="text-cyan-400 font-bold tracking-widest uppercase text-sm animate-pulse">{t('establishingConnection')}</div>
         <p className="text-slate-500 text-xs mt-4 max-w-xs">
-          O servidor pode levar até 50 segundos para "acordar" caso seja o primeiro acesso do dia.
+          {t('serverWakeup')}
         </p>
       </div>
     );
@@ -156,35 +158,41 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
   const method = roomState.calculationMethod || "sumByRole";
   const manualSelections = roomState.manualModeSelections || {};
 
-  // Helper to get vote distribution and modes
-  const getVoteStats = (votes: number[]) => {
-    if (votes.length === 0) return { distribution: {}, modes: [], autoMode: 0 };
-    const counts: Record<number, number> = {};
+  // Helper to get overall vote distribution with roles
+  const getOverallDistribution = (usersList: User[]) => {
+    const distribution: Record<number, { total: number, roles: Record<string, number> }> = {};
     let maxCount = 0;
 
-    votes.forEach(v => {
-      counts[v] = (counts[v] || 0) + 1;
-      if (counts[v] > maxCount) {
-        maxCount = counts[v];
+    usersList.filter(u => u.vote !== null).forEach(u => {
+      const vote = u.vote as number;
+      if (!distribution[vote]) {
+        distribution[vote] = { total: 0, roles: {} };
+      }
+      distribution[vote].total += 1;
+      distribution[vote].roles[u.role] = (distribution[vote].roles[u.role] || 0) + 1;
+      
+      if (distribution[vote].total > maxCount) {
+        maxCount = distribution[vote].total;
       }
     });
 
-    const modes = Object.keys(counts)
+    const modes = Object.keys(distribution)
       .map(Number)
-      .filter(v => counts[v] === maxCount);
+      .filter(v => distribution[v].total === maxCount);
 
-    return { 
-      distribution: counts, 
-      modes, 
-      autoMode: Math.max(...modes) // Default to highest if tie
+    return {
+      distribution,
+      modes,
+      autoMode: modes.length > 0 ? Math.max(...modes) : 0
     };
   };
 
   // Group users by role dynamically
   const roles = Array.from(new Set(users.map(u => u.role)));
   
+  const overallStats = getOverallDistribution(users);
+  
   const allVotes = users.filter(u => u.vote !== null).map(u => u.vote as number);
-  const overallStats = getVoteStats(allVotes);
   let overallResult = 0;
   if (method === "average") {
     overallResult = allVotes.length ? allVotes.reduce((a, b) => a + b, 0) / allVotes.length : 0;
@@ -192,21 +200,29 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
     overallResult = manualSelections['overall'] !== undefined ? manualSelections['overall'] : overallStats.autoMode;
   }
 
-  const roleResults: Record<string, { result: number, stats: ReturnType<typeof getVoteStats> }> = {};
+  // Calculate totalSum for 'sumByRole' and 'average'
   let totalSum = 0;
-
   roles.forEach(role => {
     const roleVotes = users.filter(u => u.role === role && u.vote !== null).map(u => u.vote as number);
-    const stats = getVoteStats(roleVotes);
+    if (roleVotes.length === 0) return;
     
     let result = 0;
     if (method === "average") {
-      result = roleVotes.length ? roleVotes.reduce((a, b) => a + b, 0) / roleVotes.length : 0;
+      result = roleVotes.reduce((a, b) => a + b, 0) / roleVotes.length;
     } else {
-      result = manualSelections[role] !== undefined ? manualSelections[role] : stats.autoMode;
+      // For sumByRole, we need the mode of this role
+      const counts: Record<number, number> = {};
+      let maxCount = 0;
+      roleVotes.forEach(v => {
+        counts[v] = (counts[v] || 0) + 1;
+        if (counts[v] > maxCount) maxCount = counts[v];
+      });
+      const modes = Object.keys(counts).map(Number).filter(v => counts[v] === maxCount);
+      const autoMode = modes.length > 0 ? Math.max(...modes) : 0;
+      
+      // We still use manualSelections if it was set previously, otherwise autoMode
+      result = manualSelections[role] !== undefined ? manualSelections[role] : autoMode;
     }
-    
-    roleResults[role] = { result, stats };
     totalSum += result;
   });
 
@@ -241,20 +257,20 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
           <div className="flex items-center justify-center sm:justify-start gap-4 mt-1">
             <p className="text-slate-400 text-xs sm:text-sm font-medium flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full animate-pulse ${ui.pulse}`}></span>
-              {users.length} online
+              {users.length} {t('online')}
             </p>
             {currentUser.role === "ScrumMaster" && (
               <>
                 <div className="h-4 w-[1px] bg-white/10"></div>
                 <p className="text-slate-400 text-xs sm:text-sm font-medium flex items-center gap-2">
                   <span className={`w-2 h-2 rounded-full ${ui.pulse}`}></span>
-                  {votedCount}/{users.length} votaram
+                  {votedCount}/{users.length} {t('voted')}
                 </p>
               </>
             )}
             <div className="h-4 w-[1px] bg-white/10"></div>
             <p className="text-slate-400 text-xs sm:text-sm font-medium">
-              Método: <span className={ui.accentText}>{method === "average" ? "Média Simples" : method === "sumByRole" ? "Votação por Função" : "Votação Geral"}</span>
+              {t('method')}: <span className={ui.accentText}>{method === "average" ? t('methodAverage') : method === "sumByRole" ? t('methodSumByRole') : t('methodOverall')}</span>
             </p>
           </div>
         </div>
@@ -272,7 +288,7 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
             className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl font-bold transition-all border text-xs sm:text-sm ${ui.secondaryBtn}`}
           >
             <Share size={16} />
-            {copied ? "COPIADO" : "COMPARTILHAR"}
+            {copied ? t('copied') : t('share')}
           </button>
         </div>
       </div>
@@ -289,7 +305,7 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
                   : "text-slate-500 hover:text-slate-300"
               }`}
             >
-              VOTAÇÃO GERAL
+              {t('methodOverall').toUpperCase()}
             </button>
             <button
               onClick={() => onCalculationChange("sumByRole")}
@@ -299,7 +315,7 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
                   : "text-slate-500 hover:text-slate-300"
               }`}
             >
-              VOTAÇÃO POR FUNÇÃO
+              {t('methodSumByRole').toUpperCase()}
             </button>
             <button
               onClick={() => onCalculationChange("average")}
@@ -309,7 +325,7 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
                   : "text-slate-500 hover:text-slate-300"
               }`}
             >
-              MÉDIA SIMPLES
+              {t('methodAverage').toUpperCase()}
             </button>
           </div>
         </div>
@@ -318,7 +334,7 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
       {/* Voting Options */}
       {!isRevealed && currentUser.role !== "ScrumMaster" && (
         <div className={`p-4 sm:p-8 rounded-3xl border backdrop-blur-sm transition-all duration-1000 ${ui.cardBg} ${ui.cardBorder} ${getThemeShadow(roomState.theme)}`}>
-          <h3 className="text-xs sm:text-sm font-bold text-slate-400 mb-4 sm:mb-6 text-center uppercase tracking-widest">Selecione a Estimativa</h3>
+          <h3 className="text-xs sm:text-sm font-bold text-slate-400 mb-4 sm:mb-6 text-center uppercase tracking-widest">{t('selectEstimate')}</h3>
           <div className="grid grid-cols-4 sm:flex sm:flex-wrap gap-2 sm:gap-3 justify-center">
             {VOTING_OPTIONS.map((option) => {
               const isSelected = currentUser.vote === option;
@@ -343,60 +359,54 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
       {/* Results */}
       {isRevealed && currentUser.role === "ScrumMaster" && (
         <div className="space-y-6">
-          <div className="flex flex-wrap justify-center items-start gap-4 sm:gap-6">
-            {roles.map((role, idx) => {
-              const { result, stats } = roleResults[role];
-              const colors = getColorClasses(idx, roomState.theme);
-              return (
-                <div key={role} className="flex flex-col gap-4 flex-1 min-w-[200px] max-w-[300px]">
-                  <div className={`p-4 sm:p-6 rounded-3xl border ${colors.border} backdrop-blur-sm ${colors.shadow} flex flex-col items-center justify-center relative overflow-hidden transition-all duration-1000 ${ui.cardBg}`}>
-                    <span className={`${colors.text} font-bold uppercase tracking-widest text-[10px] sm:text-xs mb-1 sm:mb-2 relative z-10`}>
-                      {method === "average" ? `Média ${role}` : `Votação ${role}`}
-                    </span>
-                    <span className="text-3xl sm:text-5xl font-bold text-white relative z-10">{result > 0 ? result.toFixed(method === "average" ? 2 : 1) : "-"}</span>
-                  </div>
-
-                  {(method === "sumByRole" || method === "mostVotedOverall") && (
-                    <div className={`p-5 rounded-3xl border transition-all duration-1000 ${colors.border} ${ui.cardBg}`}>
-                      <h4 className={`text-xs font-bold ${colors.text} uppercase tracking-widest mb-4`}>Distribuição de Votos {role}</h4>
-                      <div className="space-y-3">
-                        {Object.entries(stats.distribution).sort((a, b) => Number(b[0]) - Number(a[0])).map(([vote, count]) => {
-                          const isMode = stats.modes.includes(Number(vote));
-                          const isSelected = result === Number(vote);
-                          return (
-                            <button
-                              key={vote}
-                              disabled={!isMode || stats.modes.length <= 1}
-                              onClick={() => onSelectManualMode(role, Number(vote))}
-                              className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${
-                                isSelected 
-                                  ? `${colors.bg} ${colors.borderActive} ${colors.shadow}` 
-                                  : isMode 
-                                    ? `bg-slate-800 ${colors.border} hover:${colors.borderActive}` 
-                                    : "bg-slate-950/50 border-white/5 opacity-60"
-                              }`}
-                            >
-                              <div className="flex items-center gap-3">
-                                <span className="text-lg font-black text-white">{vote}</span>
-                                {isMode && stats.modes.length > 1 && (
-                                  <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase">Empate</span>
-                                )}
-                              </div>
-                              <span className="text-sm font-bold text-slate-400">{count} voto{count !== 1 ? "s" : ""}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          <div className="flex flex-col sm:flex-row justify-center items-start gap-4 sm:gap-6">
             
-            <div className="flex flex-col gap-4 flex-1 min-w-[200px] max-w-[300px]">
+            {/* DISTRIBUIÇÃO GERAL (Left) */}
+            <div className="flex flex-col gap-4 flex-1 min-w-[200px] max-w-[400px] w-full">
+              <div className={`p-5 rounded-3xl border transition-all duration-1000 ${ui.cardBorder} ${ui.cardBg}`}>
+                <h4 className={`text-xs font-bold ${ui.accentText} uppercase tracking-widest mb-4`}>{t('generalDistribution')}</h4>
+                <div className="space-y-3">
+                  {Object.entries(overallStats.distribution).sort((a, b) => Number(b[0]) - Number(a[0])).map(([voteStr, data]) => {
+                    const vote = Number(voteStr);
+                    const isMode = overallStats.modes.includes(vote);
+                    const isSelected = overallResult === vote;
+                    
+                    // Format role string: (1 Dev + 2 QA)
+                    const roleEntries = Object.entries(data.roles).map(([r, c]) => `${c} ${r}`);
+                    const roleString = roleEntries.length > 0 ? `(${roleEntries.join(' + ')})` : '';
+
+                    return (
+                      <button
+                        key={vote}
+                        disabled={!isMode || overallStats.modes.length <= 1}
+                        onClick={() => onSelectManualMode('overall', vote)}
+                        className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${
+                          isSelected 
+                            ? `${ui.userRevealedBox} shadow-[0_0_15px_rgba(255,255,255,0.2)]` 
+                            : isMode 
+                              ? `${ui.userVotedBox} hover:${ui.accentBorder}` 
+                              : `${ui.userEmptyBox} opacity-60`
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg font-black text-white">{vote}</span>
+                          <span className="text-sm font-bold text-slate-300">- {data.total} {data.total !== 1 ? t('votes') : t('vote')} {roleString}</span>
+                        </div>
+                        {isMode && overallStats.modes.length > 1 && (
+                          <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase">{t('tie')}</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* VOTAÇÃO GERAL (Right) */}
+            <div className="flex flex-col gap-4 flex-1 min-w-[200px] max-w-[300px] w-full">
               <div className={`p-4 sm:p-6 rounded-3xl border flex flex-col items-center justify-center relative overflow-hidden bg-gradient-to-br transition-all duration-1000 ${ui.totalCard}`}>
                 <span className={`font-bold uppercase tracking-widest text-[10px] sm:text-xs mb-1 sm:mb-2 relative z-10 ${ui.totalText}`}>
-                  {method === "average" ? "Soma Total das Médias" : method === "sumByRole" ? "Soma Votação por Função" : "Votação Geral"}
+                  {method === "average" ? t('methodAverage') : method === "sumByRole" ? t('methodSumByRole') : t('generalVoting')}
                 </span>
                 <span className="text-3xl sm:text-5xl font-bold text-white relative z-10">
                   {method === "average"
@@ -406,41 +416,8 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
                       : (overallResult > 0 ? overallResult.toFixed(1) : "-")}
                 </span>
               </div>
-
-              {method === "mostVotedOverall" && (
-                <div className={`p-5 rounded-3xl border transition-all duration-1000 ${ui.cardBorder} ${ui.cardBg}`}>
-                  <h4 className={`text-xs font-bold ${ui.accentText} uppercase tracking-widest mb-4`}>Distribuição Geral</h4>
-                  <div className="space-y-3">
-                    {Object.entries(overallStats.distribution).sort((a, b) => Number(b[0]) - Number(a[0])).map(([vote, count]) => {
-                      const isMode = overallStats.modes.includes(Number(vote));
-                      const isSelected = overallResult === Number(vote);
-                      return (
-                        <button
-                          key={vote}
-                          disabled={!isMode || overallStats.modes.length <= 1}
-                          onClick={() => onSelectManualMode('overall', Number(vote))}
-                          className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${
-                            isSelected 
-                              ? `${ui.userRevealedBox} shadow-[0_0_15px_rgba(255,255,255,0.2)]` 
-                              : isMode 
-                                ? `${ui.userVotedBox} hover:${ui.accentBorder}` 
-                                : `${ui.userEmptyBox} opacity-60`
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="text-lg font-black text-white">{vote}</span>
-                            {isMode && overallStats.modes.length > 1 && (
-                              <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase">Empate</span>
-                            )}
-                          </div>
-                          <span className="text-sm font-bold text-slate-400">{count} voto{count !== 1 ? "s" : ""}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </div>
+
           </div>
         </div>
       )}
@@ -449,7 +426,7 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
       <div className={`p-4 sm:p-8 rounded-3xl border backdrop-blur-sm transition-all duration-1000 ${ui.cardBg} ${ui.cardBorder}`}>
         <div className="flex flex-col sm:flex-row items-center justify-between mb-6 sm:mb-8 gap-4">
           <h3 className="text-lg sm:text-xl font-bold text-slate-200 uppercase tracking-widest">
-            {currentUser.role === "ScrumMaster" ? `PARTICIPANTES - ${users.length}` : "Seu Voto"}
+            {currentUser.role === "ScrumMaster" ? `${t('participants')} - ${users.length}` : t('yourVote')}
           </h3>
           {currentUser.role === "ScrumMaster" && (
             <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2 sm:gap-3">
@@ -458,7 +435,7 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
                 className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl font-bold transition-all border border-red-500/30 text-xs sm:text-sm"
               >
                 <Trash2 size={16} />
-                EXCLUIR SALA
+                {t('deleteRoom')}
               </button>
               
               {!isRevealed ? (
@@ -467,7 +444,7 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
                   className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold transition-all text-xs sm:text-sm ${ui.primaryBtn}`}
                 >
                   <Eye size={16} />
-                  REVELAR VOTOS
+                  {t('revealVotes')}
                 </button>
               ) : (
                 <button
@@ -475,7 +452,7 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
                   className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold transition-all border text-xs sm:text-sm ${ui.secondaryBtn}`}
                 >
                   <RotateCcw size={16} />
-                  REINICIAR
+                  {t('restart')}
                 </button>
               )}
             </div>
