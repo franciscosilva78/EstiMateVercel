@@ -15,7 +15,22 @@ interface RoomProps {
   onThemeChange?: (theme: "default" | "cyberpunk" | "matrix" | "ocean") => void;
 }
 
-const VOTING_OPTIONS = Array.from({ length: 26 }, (_, i) => (i + 1) * 0.5);
+const getVotingOptions = (system?: string) => {
+  switch (system) {
+    case "fibonacci":
+      return [0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89];
+    case "modified_fibonacci":
+      return [0, 0.5, 1, 2, 3, 5, 8, 13, 20, 40, 100];
+    case "estimate":
+    default:
+      return Array.from({ length: 26 }, (_, i) => (i + 1) * 0.5);
+  }
+};
+
+const formatVoteDisplay = (vote: number, system?: string) => {
+  if (system === "modified_fibonacci" && vote === 0.5) return "½";
+  return vote.toString();
+};
 
 const getColorClasses = (idx: number, theme?: string) => {
   const defaultColors = [
@@ -353,7 +368,7 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
         <div className={`p-4 sm:p-8 rounded-3xl border backdrop-blur-sm transition-all duration-1000 ${ui.cardBg} ${ui.cardBorder} ${getThemeShadow(roomState.theme)}`}>
           <h3 className="text-xs sm:text-sm font-bold text-slate-400 mb-4 sm:mb-6 text-center uppercase tracking-widest">{t('selectEstimate')}</h3>
           <div className="grid grid-cols-4 sm:flex sm:flex-wrap gap-2 sm:gap-3 justify-center">
-            {VOTING_OPTIONS.map((option) => {
+            {getVotingOptions(roomState.votingSystem).map((option) => {
               const isSelected = currentUser.vote === option;
               return (
                 <button
@@ -365,7 +380,7 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
                       : `bg-slate-950 text-slate-300 border-white/10 ${ui.voteHover}`
                   }`}
                 >
-                  {option}
+                  {formatVoteDisplay(option, roomState.votingSystem)}
                 </button>
               );
             })}
@@ -407,7 +422,7 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
                           }`}
                         >
                           <div className="flex items-center gap-3">
-                            <span className="text-lg font-black text-white">{vote}</span>
+                            <span className="text-lg font-black text-white">{formatVoteDisplay(vote, roomState.votingSystem)}</span>
                             <span className="text-sm font-bold text-slate-300">- {data.total} {data.total !== 1 ? t('votes') : t('vote')} {roleString}</span>
                           </div>
                           {isMode && overallStats.modes.length > 1 && (
@@ -427,7 +442,7 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
                     {t('generalVoting')}
                   </span>
                   <span className="text-3xl sm:text-5xl font-bold text-white relative z-10">
-                    {overallResult > 0 ? overallResult.toFixed(1) : "-"}
+                    {allVotes.length > 0 ? formatVoteDisplay(overallResult, roomState.votingSystem) : "-"}
                   </span>
                 </div>
               </div>
@@ -444,7 +459,11 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
                       <span className={`${colors.text} font-bold uppercase tracking-widest text-[10px] sm:text-xs mb-1 sm:mb-2 relative z-10`}>
                         {method === "average" ? `Média ${role}` : `Votação ${role}`}
                       </span>
-                      <span className="text-3xl sm:text-5xl font-bold text-white relative z-10">{result > 0 ? result.toFixed(method === "average" ? 2 : 1) : "-"}</span>
+                      <span className="text-3xl sm:text-5xl font-bold text-white relative z-10">
+                        {allVotes.length > 0 
+                          ? (method === "average" ? result.toFixed(2) : formatVoteDisplay(result, roomState.votingSystem)) 
+                          : "-"}
+                      </span>
                     </div>
 
                     <div className={`p-5 rounded-3xl border transition-all duration-1000 ${colors.border} ${ui.cardBg}`}>
@@ -467,7 +486,7 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
                               }`}
                             >
                               <div className="flex items-center gap-3">
-                                <span className="text-lg font-black text-white">{vote}</span>
+                                <span className="text-lg font-black text-white">{formatVoteDisplay(Number(vote), roomState.votingSystem)}</span>
                                 {isMode && stats.modes.length > 1 && (
                                   <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase">{t('tie')}</span>
                                 )}
@@ -488,9 +507,11 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
                     {method === "average" ? t('methodAverage') : t('methodSumByRole')}
                   </span>
                   <span className="text-3xl sm:text-5xl font-bold text-white relative z-10">
-                    {method === "average"
-                      ? (overallResult > 0 ? overallResult.toFixed(2) : "-")
-                      : (totalSum > 0 ? totalSum.toFixed(1) : "-")}
+                    {allVotes.length > 0
+                      ? (method === "average"
+                        ? overallResult.toFixed(2)
+                        : formatVoteDisplay(totalSum, roomState.votingSystem))
+                      : "-"}
                   </span>
                 </div>
               </div>
@@ -570,7 +591,7 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
                         : ui.userEmptyBox
                     }`}
                   >
-                    {user.vote !== null ? ((isRevealed && currentUser.role === "ScrumMaster") || user.id === currentUser.id ? user.vote : "✓") : "?"}
+                    {user.vote !== null ? ((isRevealed && currentUser.role === "ScrumMaster") || user.id === currentUser.id ? formatVoteDisplay(user.vote, roomState.votingSystem) : "✓") : "?"}
                   </div>
                 </div>
               );

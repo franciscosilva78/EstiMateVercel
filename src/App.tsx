@@ -24,6 +24,7 @@ function AppContent() {
   const [user, setUser] = useState<User | null>(null);
   const [roomState, setRoomState] = useState<RoomState | null>(null);
   const [roomNameInput, setRoomNameInput] = useState("");
+  const [votingSystemInput, setVotingSystemInput] = useState<"estimate" | "fibonacci" | "modified_fibonacci">("estimate");
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [showManual, setShowManual] = useState(false);
 
@@ -89,6 +90,7 @@ function AppContent() {
       status: "voting",
       calculationMethod: "sumByRole",
       manualModeSelections: {},
+      votingSystem: votingSystemInput,
       users: {
         [scrumMaster.id]: scrumMaster
       }
@@ -218,6 +220,18 @@ function AppContent() {
                   required
                   autoFocus
                 />
+              </div>
+              <div>
+                <label className="block text-xs sm:text-sm font-bold text-slate-300 mb-2 uppercase tracking-wider">{t('votingSystem')}</label>
+                <select
+                  value={votingSystemInput}
+                  onChange={(e) => setVotingSystemInput(e.target.value as any)}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-white/10 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all text-white font-medium text-sm sm:text-base"
+                >
+                  <option value="estimate">{t('systemEstimate')}</option>
+                  <option value="fibonacci">{t('systemFibonacci')}</option>
+                  <option value="modified_fibonacci">{t('systemModifiedFibonacci')}</option>
+                </select>
               </div>
               <button
                 type="submit"
