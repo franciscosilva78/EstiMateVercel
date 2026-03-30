@@ -52,7 +52,10 @@ export const translations = {
     errorJoining: "Erro ao entrar na sala",
     establishingConnection: "Estabelecendo Conexão...",
     serverWakeup: "O servidor pode levar até 50 segundos para 'acordar' caso seja o primeiro acesso do dia.",
-    other: "OUTRO"
+    other: "OUTRO",
+    averageRole: "Média",
+    voteRole: "Votação",
+    voteDistributionRole: "Distribuição de Votos"
   },
   en: {
     createRoom: "Create Room",
@@ -105,7 +108,10 @@ export const translations = {
     errorJoining: "Error joining the room",
     establishingConnection: "Establishing Connection...",
     serverWakeup: "The server may take up to 50 seconds to 'wake up' if it's the first access of the day.",
-    other: "OTHER"
+    other: "OTHER",
+    averageRole: "Average",
+    voteRole: "Vote",
+    voteDistributionRole: "Vote Distribution"
   },
   es: {
     createRoom: "Crear Sala",
@@ -158,6 +164,9 @@ export const translations = {
     errorJoining: "Error al unirse a la sala",
     establishingConnection: "Estableciendo Conexión...",
     serverWakeup: "El servidor puede tardar hasta 50 segundos en 'despertar' si es el primer acceso del día.",
-    other: "OTRO"
+    other: "OTRO",
+    averageRole: "Promedio",
+    voteRole: "Votación",
+    voteDistributionRole: "Distribución de Votos"
   }
 };
