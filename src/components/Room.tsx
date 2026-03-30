@@ -457,7 +457,7 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
                   <div key={role} className="flex flex-col gap-4 flex-1 min-w-[200px] max-w-[300px]">
                     <div className={`p-4 sm:p-6 rounded-3xl border ${colors.border} backdrop-blur-sm ${colors.shadow} flex flex-col items-center justify-center relative overflow-hidden transition-all duration-1000 ${ui.cardBg}`}>
                       <span className={`${colors.text} font-bold uppercase tracking-widest text-[10px] sm:text-xs mb-1 sm:mb-2 relative z-10`}>
-                        {method === "average" ? `Média ${role}` : `Votação ${role}`}
+                        {method === "average" ? `${t('averageRole')} ${role}` : `${t('voteRole')} ${role}`}
                       </span>
                       <span className="text-3xl sm:text-5xl font-bold text-white relative z-10">
                         {allVotes.length > 0 
@@ -467,7 +467,7 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
                     </div>
 
                     <div className={`p-5 rounded-3xl border transition-all duration-1000 ${colors.border} ${ui.cardBg}`}>
-                      <h4 className={`text-xs font-bold ${colors.text} uppercase tracking-widest mb-4`}>Distribuição de Votos {role}</h4>
+                      <h4 className={`text-xs font-bold ${colors.text} uppercase tracking-widest mb-4`}>{t('voteDistributionRole')} {role}</h4>
                       <div className="space-y-3">
                         {Object.entries(stats.distribution).sort((a, b) => Number(b[0]) - Number(a[0])).map(([vote, count]) => {
                           const isMode = stats.modes.includes(Number(vote));
