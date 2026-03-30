@@ -63,9 +63,12 @@ export function Layout({ children, theme = "default" }: { children: ReactNode, t
       )}
 
       <header className="border-b border-white/10 bg-slate-950/50 backdrop-blur-md py-4 px-6 flex items-center justify-between sticky top-0 z-40">
-        <h1 className={`text-2xl font-bold bg-gradient-to-r ${currentTheme.text} bg-clip-text text-transparent tracking-tight transition-colors duration-1000`}>
-          EstiMate
-        </h1>
+        <div className="flex items-center gap-3">
+          <img src="/logo.svg" alt="EstiMate Logo" className="w-8 h-8 sm:w-10 sm:h-10 drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]" />
+          <h1 className={`text-2xl font-bold bg-gradient-to-r ${currentTheme.text} bg-clip-text text-transparent tracking-tight transition-colors duration-1000`}>
+            EstiMate
+          </h1>
+        </div>
         <div className="flex items-center gap-3 sm:gap-4">
           <button onClick={() => setLang('pt')} className={`transition-all hover:scale-110 rounded-full overflow-hidden flex items-center justify-center ${lang === 'pt' ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-slate-950' : 'opacity-80 hover:opacity-100'}`} title="Português">
             <img src="https://flagcdn.com/br.svg" alt="Português" className="w-6 h-6 sm:w-7 sm:h-7 object-cover" referrerPolicy="no-referrer" />
