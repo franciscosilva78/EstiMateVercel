@@ -64,20 +64,20 @@ export function Layout({ children, theme = "default" }: { children: ReactNode, t
 
       <header className="border-b border-white/10 bg-slate-950/50 backdrop-blur-md py-4 px-6 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center gap-3">
-          <img src="/logo.svg" alt="EstiMate Logo" className="w-8 h-8 sm:w-10 sm:h-10 drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]" />
+          <img src="/logo.svg" alt="EstiMate Logo" width="40" height="40" className="w-8 h-8 sm:w-10 sm:h-10 drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]" />
           <h1 className={`text-2xl font-bold bg-gradient-to-r ${currentTheme.text} bg-clip-text text-transparent tracking-tight transition-colors duration-1000`}>
             EstiMate
           </h1>
         </div>
         <div className="flex items-center gap-3 sm:gap-4">
           <button onClick={() => setLang('pt')} className={`transition-all hover:scale-110 rounded-full overflow-hidden flex items-center justify-center ${lang === 'pt' ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-slate-950' : 'opacity-80 hover:opacity-100'}`} title="Português">
-            <img src="https://flagcdn.com/br.svg" alt="Português" className="w-6 h-6 sm:w-7 sm:h-7 object-cover" referrerPolicy="no-referrer" />
+            <img src="https://flagcdn.com/br.svg" alt="Português" width="28" height="28" loading="lazy" className="w-6 h-6 sm:w-7 sm:h-7 object-cover" referrerPolicy="no-referrer" />
           </button>
           <button onClick={() => setLang('en')} className={`transition-all hover:scale-110 rounded-full overflow-hidden flex items-center justify-center ${lang === 'en' ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-slate-950' : 'opacity-80 hover:opacity-100'}`} title="English">
-            <img src="https://flagcdn.com/us.svg" alt="English" className="w-6 h-6 sm:w-7 sm:h-7 object-cover" referrerPolicy="no-referrer" />
+            <img src="https://flagcdn.com/us.svg" alt="English" width="28" height="28" loading="lazy" className="w-6 h-6 sm:w-7 sm:h-7 object-cover" referrerPolicy="no-referrer" />
           </button>
           <button onClick={() => setLang('es')} className={`transition-all hover:scale-110 rounded-full overflow-hidden flex items-center justify-center ${lang === 'es' ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-slate-950' : 'opacity-80 hover:opacity-100'}`} title="Español">
-            <img src="https://flagcdn.com/es.svg" alt="Español" className="w-6 h-6 sm:w-7 sm:h-7 object-cover" referrerPolicy="no-referrer" />
+            <img src="https://flagcdn.com/es.svg" alt="Español" width="28" height="28" loading="lazy" className="w-6 h-6 sm:w-7 sm:h-7 object-cover" referrerPolicy="no-referrer" />
           </button>
         </div>
       </header>
