@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { RoomState, User } from "../types";
-import { Share, Eye, RotateCcw, Trash2, Palette } from "lucide-react";
+import { Share, Eye, RotateCcw, Trash2, Palette, UserX } from "lucide-react";
 import { useLanguage } from "../i18n/LanguageContext";
 
 interface RoomProps {
@@ -13,6 +13,7 @@ interface RoomProps {
   onCalculationChange: (method: "average" | "sumByRole" | "mostVotedOverall") => void;
   onSelectManualMode: (role: string, vote: number) => void;
   onThemeChange?: (theme: "default" | "cyberpunk" | "matrix" | "ocean") => void;
+  onRemoveUser: (userId: string) => void;
 }
 
 const getVotingOptions = (system?: string) => {
@@ -144,9 +145,10 @@ const getThemeUI = (theme?: string) => {
   }
 };
 
-export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDelete, onCalculationChange, onSelectManualMode, onThemeChange }: RoomProps) {
+export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDelete, onCalculationChange, onSelectManualMode, onThemeChange, onRemoveUser }: RoomProps) {
   const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
+  const [userToRemove, setUserToRemove] = useState<string | null>(null);
 
   if (!roomState) {
     return (
@@ -165,6 +167,21 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
     navigator.clipboard.writeText(shareUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleRemoveUserConfirm = (userId: string) => {
+    setUserToRemove(userId);
+  };
+
+  const confirmRemoveUser = () => {
+    if (userToRemove) {
+      onRemoveUser(userToRemove);
+      setUserToRemove(null);
+    }
+  };
+
+  const cancelRemoveUser = () => {
+    setUserToRemove(null);
   };
 
   const users = Object.values(roomState.users).filter(u => u.role !== "ScrumMaster");
@@ -576,11 +593,22 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
                   <span className="font-bold text-slate-200 truncate w-full text-center mb-1 text-xs sm:text-sm">
                     {user.name}
                   </span>
-                  <span
-                    className={`text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded-md mb-2 sm:mb-3 uppercase tracking-widest ${colors.badge}`}
-                  >
-                    {user.role}
-                  </span>
+                  <div className="flex items-center gap-1 mb-2 sm:mb-3">
+                    <span
+                      className={`text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-widest ${colors.badge}`}
+                    >
+                      {user.role}
+                    </span>
+                    {currentUser.role === "ScrumMaster" && user.id !== currentUser.id && (
+                      <button
+                        onClick={() => handleRemoveUserConfirm(user.id)}
+                        className="w-4 h-4 flex items-center justify-center rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all border border-red-500/30 hover:border-red-500/50"
+                        title={t('removeUser')}
+                      >
+                        <UserX size={10} />
+                      </button>
+                    )}
+                  </div>
 
                   <div
                     className={`w-10 h-14 sm:w-12 sm:h-16 rounded-xl flex items-center justify-center text-xl sm:text-2xl font-black border-2 transition-all duration-500 ${
@@ -598,6 +626,34 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
             })}
         </div>
       </div>
+
+      {/* Remove User Confirmation Modal */}
+      {userToRemove && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className={`border rounded-3xl p-6 max-w-md w-full shadow-2xl transition-all duration-1000 ${ui.cardBg} ${ui.cardBorder}`}>
+            <h3 className="text-lg font-bold text-white mb-4 text-center">
+              {t('removeUser')}
+            </h3>
+            <p className="text-slate-400 mb-6 text-center text-sm">
+              {t('confirmRemoveUser')}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={cancelRemoveUser}
+                className={`flex-1 px-4 py-2.5 rounded-xl font-bold transition-all border text-sm ${ui.secondaryBtn}`}
+              >
+                {t('cancel')}
+              </button>
+              <button
+                onClick={confirmRemoveUser}
+                className="flex-1 px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 rounded-xl font-bold transition-all border border-red-500/30 hover:border-red-500/50 text-sm"
+              >
+                {t('removeUser')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
