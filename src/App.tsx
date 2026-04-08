@@ -6,7 +6,7 @@ import { Room } from "./components/Room";
 import { Layout } from "./components/Layout";
 import { db, auth } from "./firebase";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
-import { doc, setDoc, onSnapshot, updateDoc, deleteDoc } from "firebase/firestore";
+import { doc, setDoc, onSnapshot, updateDoc, deleteDoc, deleteField } from "firebase/firestore";
 import { LanguageProvider, useLanguage } from "./i18n/LanguageContext";
 
 const generateShortId = () => {
@@ -200,6 +200,15 @@ function AppContent() {
     }
   };
 
+  const handleRemoveUser = async (userId: string) => {
+    if (roomId && user?.role === "ScrumMaster") {
+      const roomRef = doc(db, "rooms", roomId);
+      await updateDoc(roomRef, {
+        [`users.${userId}`]: deleteField()
+      });
+    }
+  };
+
   return (
     <Layout theme={roomState?.theme || "default"}>
       {!roomId ? (
@@ -261,6 +270,7 @@ function AppContent() {
           onCalculationChange={handleCalculationChange}
           onSelectManualMode={handleSelectManualMode}
           onThemeChange={handleThemeChange}
+          onRemoveUser={handleRemoveUser}
         />
       )}
 
