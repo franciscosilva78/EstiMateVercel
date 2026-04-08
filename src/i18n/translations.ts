@@ -55,7 +55,11 @@ export const translations = {
     other: "OUTRO",
     averageRole: "Média",
     voteRole: "Votação",
-    voteDistributionRole: "Distribuição de Votos"
+    voteDistributionRole: "Distribuição de Votos",
+    removeUser: "Remover",
+    confirmRemoveUser: "Tem certeza que deseja remover este usuário da sala?",
+    userRemoved: "Usuário removido com sucesso",
+    cancel: "Cancelar"
   },
   en: {
     createRoom: "Create Room",
@@ -111,7 +115,11 @@ export const translations = {
     other: "OTHER",
     averageRole: "Average",
     voteRole: "Vote",
-    voteDistributionRole: "Vote Distribution"
+    voteDistributionRole: "Vote Distribution",
+    removeUser: "Remove",
+    confirmRemoveUser: "Are you sure you want to remove this user from the room?",
+    userRemoved: "User successfully removed",
+    cancel: "Cancel"
   },
   es: {
     createRoom: "Crear Sala",
@@ -167,6 +175,10 @@ export const translations = {
     other: "OTRO",
     averageRole: "Promedio",
     voteRole: "Votación",
-    voteDistributionRole: "Distribución de Votos"
+    voteDistributionRole: "Distribución de Votos",
+    removeUser: "Eliminar",
+    confirmRemoveUser: "¿Estás seguro de que quieres eliminar este usuario de la sala?",
+    userRemoved: "Usuario eliminado exitosamente",
+    cancel: "Cancelar"
   }
 };
