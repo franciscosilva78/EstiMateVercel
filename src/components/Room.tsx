@@ -184,7 +184,9 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
     setUserToRemove(null);
   };
 
-  const users = Object.values(roomState.users).filter(u => u.role !== "ScrumMaster");
+  const users = Object.values(roomState.users).filter(u =>
+    u && u.role !== "ScrumMaster" && u.name && u.name.trim() !== ""
+  );
   const votedCount = users.filter(u => u.vote !== null).length;
   const isRevealed = roomState.status === "revealed";
   const method = roomState.calculationMethod || "sumByRole";
