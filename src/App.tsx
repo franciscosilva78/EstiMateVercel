@@ -29,31 +29,6 @@ function AppContent() {
   const [showManual, setShowManual] = useState(false);
   const [wasRemovedFromRoom, setWasRemovedFromRoom] = useState(false);
 
-  // Heartbeat to update user online status
-  useEffect(() => {
-    if (!user || !roomId || !isAuthReady) return;
-
-    const updateHeartbeat = async () => {
-      if (auth.currentUser && roomState && roomState.users[auth.currentUser.uid]) {
-        try {
-          const roomRef = doc(db, "rooms", roomId);
-          await updateDoc(roomRef, {
-            [`users.${auth.currentUser.uid}.lastSeen`]: Date.now(),
-            [`users.${auth.currentUser.uid}.isOnline`]: true
-          });
-        } catch (error) {
-          console.error("Error updating heartbeat:", error);
-        }
-      }
-    };
-
-    // Update immediately and then every 15 seconds
-    updateHeartbeat();
-    const heartbeatInterval = setInterval(updateHeartbeat, 15000);
-
-    return () => clearInterval(heartbeatInterval);
-  }, [user, roomId, isAuthReady, roomState]);
-
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
@@ -80,7 +55,7 @@ function AppContent() {
   useEffect(() => {
     if (roomId && isAuthReady) {
       const roomRef = doc(db, "rooms", roomId);
-
+      
       const unsubscribe = onSnapshot(roomRef, (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data() as RoomState;
@@ -91,26 +66,22 @@ function AppContent() {
             const userExistsInRoom = data.users[currentUserId];
 
             if (userExistsInRoom) {
-              // User exists in room - normal update
+              // User still exists in room - normal update
               setUser(data.users[currentUserId]);
               setRoomState(data);
               setWasRemovedFromRoom(false);
+            } else if (user && user.id === currentUserId) {
+              // User was removed from the room
+              console.log("User was removed from room");
+              setUser(null);
+              setRoomState(null);
+              setWasRemovedFromRoom(true);
+              // Clear any potential cached data
+              setRoomNameInput("");
+              // Keep the room ID to show join form again
             } else {
-              // User doesn't exist in room
-              if (user && user.id === currentUserId) {
-                // User was previously in the room but now removed
-                console.log("User was removed from room");
-                setUser(null);
-                setRoomState(null);
-                setWasRemovedFromRoom(true);
-                // Clear any potential cached data
-                setRoomNameInput("");
-                // Keep the room ID to show join form again
-              } else {
-                // User hasn't joined yet - show room state but no user
-                setRoomState(data);
-                setWasRemovedFromRoom(false);
-              }
+              // User hasn't joined yet or no previous user state
+              setRoomState(data);
             }
           } else {
             setRoomState(data);
@@ -136,16 +107,7 @@ function AppContent() {
     if (!roomNameInput.trim() || !isAuthReady) return;
     
     const newRoomId = generateShortId();
-    const scrumMaster: User = {
-      id: auth.currentUser!.uid,
-      name: "Scrum Master",
-      role: "ScrumMaster",
-      vote: null,
-      avatar: "👑",
-      color: "#F59E0B",
-      lastSeen: Date.now(),
-      isOnline: true
-    };
+    const scrumMaster: User = { id: auth.currentUser!.uid, name: "Scrum Master", role: "ScrumMaster", vote: null };
     
     const newRoom: RoomState = {
       id: newRoomId,
@@ -174,7 +136,7 @@ function AppContent() {
     }
   };
 
-  const handleJoin = async (name: string, role: string, avatar?: string, color?: string) => {
+  const handleJoin = async (name: string, role: string) => {
     if (!isAuthReady || !roomId) return;
     
     if (roomState) {
@@ -186,16 +148,7 @@ function AppContent() {
       }
     }
 
-    const newUser: User = {
-      id: auth.currentUser!.uid,
-      name: name.trim(),
-      role,
-      vote: null,
-      avatar: avatar || "🧑‍💻",
-      color: color || "#8B5CF6",
-      lastSeen: Date.now(),
-      isOnline: true
-    };
+    const newUser: User = { id: auth.currentUser!.uid, name: name.trim(), role, vote: null };
     
     try {
       const roomRef = doc(db, "rooms", roomId);
@@ -347,7 +300,7 @@ function AppContent() {
       ) : (
         <Room
           roomState={roomState}
-          currentUser={roomState?.users[user?.id] || user}
+          currentUser={(roomState?.users[user.id]) || user}
           onVote={handleVote}
           onReveal={handleReveal}
           onReset={handleReset}

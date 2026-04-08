@@ -1,9 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { RoomState, User } from "../types";
-import { Share, Eye, RotateCcw, Trash2, Palette, UserX, Volume2, VolumeX } from "lucide-react";
+import { Share, Eye, RotateCcw, Trash2, Palette, UserX } from "lucide-react";
 import { useLanguage } from "../i18n/LanguageContext";
-import { getColorClasses as getUserColorClasses, SoundManager } from "../lib/avatars";
-import { Confetti } from "./Confetti";
 
 interface RoomProps {
   roomState: RoomState | null;
@@ -151,9 +149,6 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
   const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
   const [userToRemove, setUserToRemove] = useState<string | null>(null);
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [soundManager] = useState(() => SoundManager.getInstance());
-  const [soundEnabled, setSoundEnabled] = useState(() => soundManager.isSoundEnabled());
 
   if (!roomState) {
     return (
@@ -196,23 +191,6 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
   const isRevealed = roomState.status === "revealed";
   const method = roomState.calculationMethod || "sumByRole";
   const manualSelections = roomState.manualModeSelections || {};
-
-  const allVoted = users.length > 0 && votedCount === users.length;
-  const prevAllVotedRef = useRef(false);
-
-  // Detect when all users have voted and trigger confetti + sound
-  useEffect(() => {
-    if (allVoted && !prevAllVotedRef.current && !isRevealed && currentUser.role === "ScrumMaster") {
-      setShowConfetti(true);
-      soundManager.playSuccessSound();
-    }
-    prevAllVotedRef.current = allVoted;
-  }, [allVoted, isRevealed, currentUser.role, soundManager]);
-
-  // Reset confetti after animation
-  const handleConfettiComplete = () => {
-    setShowConfetti(false);
-  };
 
   // Helper to get vote distribution and modes
   const getVoteStats = (votes: number[]) => {
@@ -348,18 +326,6 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
           </div>
         </div>
         <div className="flex w-full sm:w-auto gap-3 items-center justify-center sm:justify-end flex-wrap">
-          {/* Sound Toggle Button */}
-          <button
-            onClick={() => {
-              const newSoundState = soundManager.toggleSound();
-              setSoundEnabled(newSoundState);
-            }}
-            className={`flex items-center justify-center p-2.5 rounded-xl font-bold transition-all border text-xs sm:text-sm ${ui.secondaryBtn}`}
-            title={soundEnabled ? t('soundEnabled') : t('soundDisabled')}
-          >
-            {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-          </button>
-
           {currentUser.role === "ScrumMaster" && onThemeChange && (
             <div className={`flex gap-1.5 p-1.5 rounded-xl border transition-all duration-1000 ${ui.cardBg} ${ui.cardBorder}`}>
               <button aria-label="Nebula Theme" onClick={() => onThemeChange("default")} className={`w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 border-2 transition-all ${roomState.theme === "default" || !roomState.theme ? "border-white scale-110 shadow-[0_0_10px_rgba(168,85,247,0.5)]" : "border-transparent opacity-50 hover:opacity-100"}`} title="Nebula"></button>
@@ -614,44 +580,24 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
           {users
             .filter((user) => currentUser.role === "ScrumMaster" || user.id === currentUser.id)
             .map((user) => {
-              const userColorClass = user.color ? getUserColorClasses(user.color) : null;
-              const isUserOnline = user.isOnline && (!user.lastSeen || (Date.now() - user.lastSeen < 30000));
-
+              const roleIdx = roles.indexOf(user.role);
+              const colors = roleIdx >= 0 ? getColorClasses(roleIdx, roomState.theme) : getColorClasses(0, roomState.theme);
+              
               return (
                 <div
                   key={user.id}
-                  className={`relative flex flex-col items-center p-3 sm:p-4 rounded-2xl border transition-all duration-500 ${
+                  className={`flex flex-col items-center p-3 sm:p-4 rounded-2xl border transition-all duration-500 ${
                     user.vote !== null
                       ? `${ui.userVotedBg} ${ui.accentBorder}`
                       : `${ui.cardBg} border-white/10 border-dashed opacity-70`
                   }`}
-                  style={userColorClass ? {
-                    borderColor: user.color + '40',
-                    backgroundColor: user.color + '10'
-                  } : {}}
                 >
-                  {/* Online Status Indicator */}
-                  <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-slate-900 ${
-                    isUserOnline ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-slate-500'
-                  }`} title={isUserOnline ? t('statusOnline') : t('statusOffline')} />
-
-                  {/* Avatar */}
-                  <div className="text-2xl sm:text-3xl mb-1">
-                    {user.avatar || "🧑‍💻"}
-                  </div>
-
                   <span className="font-bold text-slate-200 truncate w-full text-center mb-1 text-xs sm:text-sm">
                     {user.name}
                   </span>
-
                   <div className="flex items-center gap-1 mb-2 sm:mb-3">
                     <span
-                      className={`text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-widest`}
-                      style={userColorClass ? {
-                        backgroundColor: user.color + '30',
-                        color: user.color,
-                        borderColor: user.color + '60'
-                      } : {}}
+                      className={`text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-widest ${colors.badge}`}
                     >
                       {user.role}
                     </span>
@@ -674,10 +620,6 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
                           : ui.userVotedBox
                         : ui.userEmptyBox
                     }`}
-                    style={userColorClass && user.vote !== null ? {
-                      borderColor: user.color + '80',
-                      backgroundColor: user.color + '20'
-                    } : {}}
                   >
                     {user.vote !== null ? ((isRevealed && currentUser.role === "ScrumMaster") || user.id === currentUser.id ? formatVoteDisplay(user.vote, roomState.votingSystem) : "✓") : "?"}
                   </div>
@@ -711,20 +653,6 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
                 {t('removeUser')}
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Confetti Animation */}
-      <Confetti trigger={showConfetti} onComplete={handleConfettiComplete} />
-
-      {/* All Votes Received Notification */}
-      {allVoted && !isRevealed && currentUser.role === "ScrumMaster" && (
-        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-40 animate-bounce">
-          <div className={`px-6 py-3 rounded-2xl border backdrop-blur-md transition-all duration-1000 ${ui.cardBg} ${ui.cardBorder} ${ui.accentText}`}>
-            <p className="text-sm font-bold text-center">
-              {t('allVotesReceived')}
-            </p>
           </div>
         </div>
       )}

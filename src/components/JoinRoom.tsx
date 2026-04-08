@@ -1,9 +1,8 @@
 import { useState, FormEvent } from "react";
 import { useLanguage } from "../i18n/LanguageContext";
-import { AVATAR_OPTIONS, COLOR_OPTIONS, getRandomAvatar, getRandomColor } from "../lib/avatars";
 
 interface JoinRoomProps {
-  onJoin: (name: string, role: string, avatar?: string, color?: string) => Promise<void>;
+  onJoin: (name: string, role: string) => Promise<void>;
   theme?: string;
   wasRemoved?: boolean;
 }
@@ -42,8 +41,6 @@ export function JoinRoom({ onJoin, theme, wasRemoved }: JoinRoomProps) {
   const [name, setName] = useState("");
   const [role, setRole] = useState<string>("Dev");
   const [customRole, setCustomRole] = useState("");
-  const [avatar, setAvatar] = useState<string>(() => getRandomAvatar());
-  const [color, setColor] = useState<string>(() => getRandomColor());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -56,7 +53,7 @@ export function JoinRoom({ onJoin, theme, wasRemoved }: JoinRoomProps) {
       setIsLoading(true);
       const finalRole = role === "Outro" ? customRole.trim() || "Outro" : role;
       try {
-        await onJoin(name.trim(), finalRole, avatar, color);
+        await onJoin(name.trim(), finalRole);
       } catch (err: any) {
         setError(err.message || t('errorJoining'));
         setIsLoading(false);
@@ -142,56 +139,7 @@ export function JoinRoom({ onJoin, theme, wasRemoved }: JoinRoomProps) {
             />
           )}
         </div>
-
-        {/* Avatar Selection */}
-        <div>
-          <label className="block text-xs sm:text-sm font-bold text-slate-300 mb-2 uppercase tracking-wider">{t('chooseAvatar')}</label>
-          <div className="grid grid-cols-8 sm:grid-cols-10 gap-2 mb-3 max-h-32 overflow-y-auto p-2 rounded-xl bg-slate-950/50 border border-white/5">
-            {AVATAR_OPTIONS.map((avatarOption) => (
-              <button
-                key={avatarOption}
-                type="button"
-                onClick={() => setAvatar(avatarOption)}
-                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center text-lg sm:text-xl transition-all ${
-                  avatar === avatarOption
-                    ? 'bg-cyan-500/20 border-2 border-cyan-500 shadow-[0_0_15px_-3px_rgba(34,211,238,0.3)]'
-                    : 'bg-slate-800 border border-slate-600 hover:bg-slate-700 hover:border-slate-500'
-                }`}
-              >
-                {avatarOption}
-              </button>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={() => setAvatar(getRandomAvatar())}
-            className="text-xs text-cyan-400 hover:text-cyan-300 underline"
-          >
-            🎲 Aleatório
-          </button>
-        </div>
-
-        {/* Color Selection */}
-        <div>
-          <label className="block text-xs sm:text-sm font-bold text-slate-300 mb-2 uppercase tracking-wider">{t('chooseColor')}</label>
-          <div className="grid grid-cols-6 gap-2">
-            {COLOR_OPTIONS.map((colorOption) => (
-              <button
-                key={colorOption.value}
-                type="button"
-                onClick={() => setColor(colorOption.value)}
-                className={`w-10 h-10 rounded-xl transition-all ${
-                  color === colorOption.value
-                    ? 'border-2 border-white scale-110 shadow-[0_0_15px_-3px_rgba(255,255,255,0.3)]'
-                    : 'border border-slate-600 hover:border-slate-400 hover:scale-105'
-                }`}
-                style={{ backgroundColor: colorOption.value }}
-                title={colorOption.name}
-              />
-            ))}
-          </div>
-        </div>
-
+        
         {error && (
           <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium text-center animate-pulse">
             {error}

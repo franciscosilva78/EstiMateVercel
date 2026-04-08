@@ -3,10 +3,6 @@ export interface User {
   name: string;
   role: string;
   vote: number | null;
-  avatar?: string;
-  color?: string;
-  lastSeen?: number;
-  isOnline?: boolean;
 }
 
 export interface RoomState {
