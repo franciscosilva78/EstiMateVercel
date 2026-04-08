@@ -59,7 +59,9 @@ export const translations = {
     removeUser: "Remover",
     confirmRemoveUser: "Tem certeza que deseja remover este usuário da sala?",
     userRemoved: "Usuário removido com sucesso",
-    cancel: "Cancelar"
+    cancel: "Cancelar",
+    removedFromRoom: "Você foi removido desta sala pelo Scrum Master.",
+    rejoinRoom: "Entrar Novamente"
   },
   en: {
     createRoom: "Create Room",
@@ -119,7 +121,9 @@ export const translations = {
     removeUser: "Remove",
     confirmRemoveUser: "Are you sure you want to remove this user from the room?",
     userRemoved: "User successfully removed",
-    cancel: "Cancel"
+    cancel: "Cancel",
+    removedFromRoom: "You have been removed from this room by the Scrum Master.",
+    rejoinRoom: "Rejoin Room"
   },
   es: {
     createRoom: "Crear Sala",
@@ -179,6 +183,8 @@ export const translations = {
     removeUser: "Eliminar",
     confirmRemoveUser: "¿Estás seguro de que quieres eliminar este usuario de la sala?",
     userRemoved: "Usuario eliminado exitosamente",
-    cancel: "Cancelar"
+    cancel: "Cancelar",
+    removedFromRoom: "Has sido eliminado de esta sala por el Scrum Master.",
+    rejoinRoom: "Volver a Unirse"
   }
 };
