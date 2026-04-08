@@ -80,7 +80,7 @@ function AppContent() {
   useEffect(() => {
     if (roomId && isAuthReady) {
       const roomRef = doc(db, "rooms", roomId);
-      
+
       const unsubscribe = onSnapshot(roomRef, (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data() as RoomState;
@@ -91,22 +91,26 @@ function AppContent() {
             const userExistsInRoom = data.users[currentUserId];
 
             if (userExistsInRoom) {
-              // User still exists in room - normal update
+              // User exists in room - normal update
               setUser(data.users[currentUserId]);
               setRoomState(data);
               setWasRemovedFromRoom(false);
-            } else if (user && user.id === currentUserId) {
-              // User was removed from the room
-              console.log("User was removed from room");
-              setUser(null);
-              setRoomState(null);
-              setWasRemovedFromRoom(true);
-              // Clear any potential cached data
-              setRoomNameInput("");
-              // Keep the room ID to show join form again
             } else {
-              // User hasn't joined yet or no previous user state
-              setRoomState(data);
+              // User doesn't exist in room
+              if (user && user.id === currentUserId) {
+                // User was previously in the room but now removed
+                console.log("User was removed from room");
+                setUser(null);
+                setRoomState(null);
+                setWasRemovedFromRoom(true);
+                // Clear any potential cached data
+                setRoomNameInput("");
+                // Keep the room ID to show join form again
+              } else {
+                // User hasn't joined yet - show room state but no user
+                setRoomState(data);
+                setWasRemovedFromRoom(false);
+              }
             }
           } else {
             setRoomState(data);
@@ -343,7 +347,7 @@ function AppContent() {
       ) : (
         <Room
           roomState={roomState}
-          currentUser={(roomState?.users[user.id]) || user}
+          currentUser={roomState?.users[user?.id] || user}
           onVote={handleVote}
           onReveal={handleReveal}
           onReset={handleReset}
