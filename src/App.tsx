@@ -29,6 +29,31 @@ function AppContent() {
   const [showManual, setShowManual] = useState(false);
   const [wasRemovedFromRoom, setWasRemovedFromRoom] = useState(false);
 
+  // Heartbeat to update user online status
+  useEffect(() => {
+    if (!user || !roomId || !isAuthReady) return;
+
+    const updateHeartbeat = async () => {
+      if (auth.currentUser && roomState && roomState.users[auth.currentUser.uid]) {
+        try {
+          const roomRef = doc(db, "rooms", roomId);
+          await updateDoc(roomRef, {
+            [`users.${auth.currentUser.uid}.lastSeen`]: Date.now(),
+            [`users.${auth.currentUser.uid}.isOnline`]: true
+          });
+        } catch (error) {
+          console.error("Error updating heartbeat:", error);
+        }
+      }
+    };
+
+    // Update immediately and then every 15 seconds
+    updateHeartbeat();
+    const heartbeatInterval = setInterval(updateHeartbeat, 15000);
+
+    return () => clearInterval(heartbeatInterval);
+  }, [user, roomId, isAuthReady, roomState]);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
@@ -107,7 +132,16 @@ function AppContent() {
     if (!roomNameInput.trim() || !isAuthReady) return;
     
     const newRoomId = generateShortId();
-    const scrumMaster: User = { id: auth.currentUser!.uid, name: "Scrum Master", role: "ScrumMaster", vote: null };
+    const scrumMaster: User = {
+      id: auth.currentUser!.uid,
+      name: "Scrum Master",
+      role: "ScrumMaster",
+      vote: null,
+      avatar: "👑",
+      color: "#F59E0B",
+      lastSeen: Date.now(),
+      isOnline: true
+    };
     
     const newRoom: RoomState = {
       id: newRoomId,
@@ -136,7 +170,7 @@ function AppContent() {
     }
   };
 
-  const handleJoin = async (name: string, role: string) => {
+  const handleJoin = async (name: string, role: string, avatar?: string, color?: string) => {
     if (!isAuthReady || !roomId) return;
     
     if (roomState) {
@@ -148,7 +182,16 @@ function AppContent() {
       }
     }
 
-    const newUser: User = { id: auth.currentUser!.uid, name: name.trim(), role, vote: null };
+    const newUser: User = {
+      id: auth.currentUser!.uid,
+      name: name.trim(),
+      role,
+      vote: null,
+      avatar: avatar || "🧑‍💻",
+      color: color || "#8B5CF6",
+      lastSeen: Date.now(),
+      isOnline: true
+    };
     
     try {
       const roomRef = doc(db, "rooms", roomId);
