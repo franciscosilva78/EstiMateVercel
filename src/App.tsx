@@ -27,6 +27,7 @@ function AppContent() {
   const [votingSystemInput, setVotingSystemInput] = useState<"estimate" | "fibonacci" | "modified_fibonacci">("estimate");
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [showManual, setShowManual] = useState(false);
+  const [wasRemovedFromRoom, setWasRemovedFromRoom] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -61,6 +62,13 @@ function AppContent() {
           setRoomState(data);
           if (auth.currentUser && data.users[auth.currentUser.uid]) {
             setUser(data.users[auth.currentUser.uid]);
+            setWasRemovedFromRoom(false);
+          } else if (auth.currentUser && user) {
+            // Current user was removed from the room
+            setUser(null);
+            setRoomState(null);
+            setWasRemovedFromRoom(true);
+            // Keep the room ID to show join form again
           }
         } else {
           // Room deleted
@@ -258,7 +266,7 @@ function AppContent() {
           </div>
         </div>
       ) : !user ? (
-        <JoinRoom onJoin={handleJoin} theme={roomState?.theme} />
+        <JoinRoom onJoin={handleJoin} theme={roomState?.theme} wasRemoved={wasRemovedFromRoom} />
       ) : (
         <Room
           roomState={roomState}
