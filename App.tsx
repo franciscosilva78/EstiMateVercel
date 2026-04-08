@@ -59,16 +59,36 @@ function AppContent() {
       const unsubscribe = onSnapshot(roomRef, (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data() as RoomState;
-          setRoomState(data);
 
           // Check if current user exists in the room
-          if (auth.currentUser && data.users[auth.currentUser.uid]) {
-            setUser(data.users[auth.currentUser.uid]);
-            setWasRemovedFromRoom(false);
-          } else if (user && auth.currentUser && !data.users[auth.currentUser.uid]) {
-            // User was removed from room
-            setUser(null);
-            setWasRemovedFromRoom(true);
+          if (auth.currentUser) {
+            const currentUserId = auth.currentUser.uid;
+            const userExistsInRoom = data.users[currentUserId];
+
+            if (userExistsInRoom) {
+              // User exists in room - normal update
+              setUser(data.users[currentUserId]);
+              setRoomState(data);
+              setWasRemovedFromRoom(false);
+            } else {
+              // User doesn't exist in room
+              if (user && user.id === currentUserId) {
+                // User was previously in the room but now removed
+                console.log("User was removed from room");
+                setUser(null);
+                setRoomState(null);
+                setWasRemovedFromRoom(true);
+                // Clear any potential cached data
+                setRoomNameInput("");
+                // Keep the room ID to show join form again
+              } else {
+                // User hasn't joined yet - show room state but no user
+                setRoomState(data);
+                setWasRemovedFromRoom(false);
+              }
+            }
+          } else {
+            setRoomState(data);
           }
         } else {
           // Room deleted
@@ -129,9 +149,9 @@ function AppContent() {
     if (!isAuthReady || !roomId) return;
 
     if (roomState) {
-      const nameExists = (Object.values(roomState.users) as User[]).some(
-        (u) => u.name.toLowerCase() === name.trim().toLowerCase() && u.id !== auth.currentUser!.uid
-      );
+      const nameExists = (Object.values(roomState.users) as User[])
+        .filter(u => u && u.name && u.name.trim() !== "")
+        .some((u) => u.name.toLowerCase() === name.trim().toLowerCase() && u.id !== auth.currentUser!.uid);
       if (nameExists) {
         throw new Error(t('nameInUse'));
       }
