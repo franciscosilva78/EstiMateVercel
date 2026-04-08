@@ -59,22 +59,39 @@ function AppContent() {
       const unsubscribe = onSnapshot(roomRef, (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data() as RoomState;
-          setRoomState(data);
-          if (auth.currentUser && data.users[auth.currentUser.uid]) {
-            setUser(data.users[auth.currentUser.uid]);
-            setWasRemovedFromRoom(false);
-          } else if (auth.currentUser && user) {
-            // Current user was removed from the room
-            setUser(null);
-            setRoomState(null);
-            setWasRemovedFromRoom(true);
-            // Keep the room ID to show join form again
+
+          // Check if current user exists in the room
+          if (auth.currentUser) {
+            const currentUserId = auth.currentUser.uid;
+            const userExistsInRoom = data.users[currentUserId];
+
+            if (userExistsInRoom) {
+              // User still exists in room - normal update
+              setUser(data.users[currentUserId]);
+              setRoomState(data);
+              setWasRemovedFromRoom(false);
+            } else if (user && user.id === currentUserId) {
+              // User was removed from the room
+              console.log("User was removed from room");
+              setUser(null);
+              setRoomState(null);
+              setWasRemovedFromRoom(true);
+              // Clear any potential cached data
+              setRoomNameInput("");
+              // Keep the room ID to show join form again
+            } else {
+              // User hasn't joined yet or no previous user state
+              setRoomState(data);
+            }
+          } else {
+            setRoomState(data);
           }
         } else {
           // Room deleted
           setRoomId(null);
           setUser(null);
           setRoomState(null);
+          setWasRemovedFromRoom(false);
           window.history.pushState({}, "", "/");
         }
       }, (error) => {
@@ -146,7 +163,15 @@ function AppContent() {
   };
 
   const handleVote = async (vote: number) => {
-    if (roomId && user) {
+    if (roomId && user && roomState) {
+      // Verify user still exists in the room before allowing vote
+      if (!roomState.users[user.id]) {
+        // User was removed, trigger state update
+        setUser(null);
+        setWasRemovedFromRoom(true);
+        return;
+      }
+
       const roomRef = doc(db, "rooms", roomId);
       await updateDoc(roomRef, {
         [`users.${user.id}.vote`]: vote
@@ -210,10 +235,15 @@ function AppContent() {
 
   const handleRemoveUser = async (userId: string) => {
     if (roomId && user?.role === "ScrumMaster") {
-      const roomRef = doc(db, "rooms", roomId);
-      await updateDoc(roomRef, {
-        [`users.${userId}`]: deleteField()
-      });
+      try {
+        const roomRef = doc(db, "rooms", roomId);
+        await updateDoc(roomRef, {
+          [`users.${userId}`]: deleteField()
+        });
+        console.log(`User ${userId} removed from room`);
+      } catch (error) {
+        console.error("Error removing user:", error);
+      }
     }
   };
 
