@@ -4,6 +4,7 @@ import { useLanguage } from "../i18n/LanguageContext";
 interface JoinRoomProps {
   onJoin: (name: string, role: string) => Promise<void>;
   theme?: string;
+  wasRemoved?: boolean;
 }
 
 const getThemeUI = (theme?: string) => {
@@ -35,7 +36,7 @@ const getThemeUI = (theme?: string) => {
   }
 };
 
-export function JoinRoom({ onJoin, theme }: JoinRoomProps) {
+export function JoinRoom({ onJoin, theme, wasRemoved }: JoinRoomProps) {
   const { t } = useLanguage();
   const [name, setName] = useState("");
   const [role, setRole] = useState<string>("Dev");
@@ -63,8 +64,14 @@ export function JoinRoom({ onJoin, theme }: JoinRoomProps) {
   return (
     <div className={`max-w-md mx-auto mt-10 sm:mt-20 p-6 sm:p-8 rounded-3xl bg-slate-900/50 border backdrop-blur-sm transition-all duration-1000 ${ui.cardBorder}`}>
       <h2 className={`text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 text-center bg-gradient-to-r ${ui.textGradient} bg-clip-text text-transparent transition-colors duration-1000`}>
-        {t('joinSession')}
+        {wasRemoved ? t('rejoinRoom') : t('joinSession')}
       </h2>
+
+      {wasRemoved && (
+        <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-medium text-center">
+          {t('removedFromRoom')}
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
         <div>
           <label className="block text-xs sm:text-sm font-bold text-slate-300 mb-2 uppercase tracking-wider">{t('yourName')}</label>
