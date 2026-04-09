@@ -269,6 +269,13 @@ function AppContent() {
     }
   };
 
+  const handleThemeChange = async (theme: "default" | "cyberpunk" | "matrix" | "ocean") => {
+    if (roomId) {
+      const roomRef = doc(db, "rooms", roomId);
+      await updateDoc(roomRef, { theme });
+    }
+  };
+
   return (
     <Layout theme={roomState?.theme || "default"}>
       {!roomId ? (
@@ -331,6 +338,7 @@ function AppContent() {
           onSelectManualMode={handleSelectManualMode}
           onRemoveUser={handleRemoveUser}
           onChangeUserRole={handleChangeUserRole}
+          onThemeChange={handleThemeChange}
         />
       )}
 
