@@ -28,10 +28,10 @@ const getThemeUI = (theme?: string) => {
       inputFocus: "focus:ring-cyan-500 focus:border-cyan-500",
     };
     default: return {
-      primaryBtn: "bg-gradient-to-r from-cyan-500 to-purple-600 shadow-[0_0_20px_-5px_rgba(34,211,238,0.4)] hover:shadow-[0_0_30px_-5px_rgba(34,211,238,0.6)] text-white",
+      primaryBtn: "bg-gradient-to-r from-cyan-500 to-purple-600 shadow-[0_0_20px_-5px_rgba(168,85,247,0.5)] hover:shadow-[0_0_30px_-5px_rgba(168,85,247,0.6)] text-white",
       textGradient: "from-cyan-400 to-purple-500",
-      cardBorder: "border-white/10 shadow-[0_0_40px_-10px_rgba(34,211,238,0.2)]",
-      inputFocus: "focus:ring-cyan-500 focus:border-cyan-500",
+      cardBorder: "border-white/10 shadow-[0_0_40px_-10px_rgba(168,85,247,0.2)]",
+      inputFocus: "focus:ring-purple-500 focus:border-purple-500",
     };
   }
 };
@@ -139,7 +139,7 @@ export function JoinRoom({ onJoin, theme, wasRemoved }: JoinRoomProps) {
             />
           )}
         </div>
-        
+
         {error && (
           <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium text-center animate-pulse">
             {error}
