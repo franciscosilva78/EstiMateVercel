@@ -14,6 +14,7 @@ interface RoomProps {
   onSelectManualMode: (role: string, vote: number) => void;
   onRemoveUser: (userId: string) => void;
   onChangeUserRole: (newRole: string) => void;
+  onThemeChange?: (theme: "default" | "cyberpunk" | "matrix" | "ocean") => void;
 }
 
 const getVotingOptions = (system?: string) => {
@@ -33,18 +34,67 @@ const formatVoteDisplay = (vote: number, system?: string) => {
   return vote.toString();
 };
 
-const getColorClasses = (idx: number) => {
-  const colors = [
+const getColorClasses = (idx: number, theme?: string) => {
+  const defaultColors = [
     { border: "border-purple-500/30", text: "text-purple-400", shadow: "shadow-[0_0_30px_-10px_rgba(168,85,247,0.2)]", bg: "bg-purple-500/20", borderActive: "border-purple-500" },
     { border: "border-cyan-500/30", text: "text-cyan-400", shadow: "shadow-[0_0_30px_-10px_rgba(34,211,238,0.2)]", bg: "bg-cyan-500/20", borderActive: "border-cyan-500" },
     { border: "border-emerald-500/30", text: "text-emerald-400", shadow: "shadow-[0_0_30px_-10px_rgba(16,185,129,0.2)]", bg: "bg-emerald-500/20", borderActive: "border-emerald-500" },
     { border: "border-amber-500/30", text: "text-amber-400", shadow: "shadow-[0_0_30px_-10px_rgba(245,158,11,0.2)]", bg: "bg-amber-500/20", borderActive: "border-amber-500" },
     { border: "border-pink-500/30", text: "text-pink-400", shadow: "shadow-[0_0_30px_-10px_rgba(236,72,153,0.2)]", bg: "bg-pink-500/20", borderActive: "border-pink-500" },
   ];
+
+  const cyberpunkColors = [
+    { border: "border-pink-500/30", text: "text-pink-400", shadow: "shadow-[0_0_30px_-10px_rgba(236,72,153,0.2)]", bg: "bg-pink-500/20", borderActive: "border-pink-500" },
+    { border: "border-fuchsia-500/30", text: "text-fuchsia-400", shadow: "shadow-[0_0_30px_-10px_rgba(217,70,239,0.2)]", bg: "bg-fuchsia-500/20", borderActive: "border-fuchsia-500" },
+    { border: "border-yellow-500/30", text: "text-yellow-400", shadow: "shadow-[0_0_30px_-10px_rgba(234,179,8,0.2)]", bg: "bg-yellow-500/20", borderActive: "border-yellow-500" },
+    { border: "border-rose-500/30", text: "text-rose-400", shadow: "shadow-[0_0_30px_-10px_rgba(244,63,94,0.2)]", bg: "bg-rose-500/20", borderActive: "border-rose-500" },
+    { border: "border-orange-500/30", text: "text-orange-400", shadow: "shadow-[0_0_30px_-10px_rgba(249,115,22,0.2)]", bg: "bg-orange-500/20", borderActive: "border-orange-500" },
+  ];
+
+  const matrixColors = [
+    { border: "border-emerald-500/30", text: "text-emerald-400", shadow: "shadow-[0_0_30px_-10px_rgba(16,185,129,0.2)]", bg: "bg-emerald-500/20", borderActive: "border-emerald-500" },
+    { border: "border-green-500/30", text: "text-green-400", shadow: "shadow-[0_0_30px_-10px_rgba(34,197,94,0.2)]", bg: "bg-green-500/20", borderActive: "border-green-500" },
+    { border: "border-teal-500/30", text: "text-teal-400", shadow: "shadow-[0_0_30px_-10px_rgba(20,184,166,0.2)]", bg: "bg-teal-500/20", borderActive: "border-teal-500" },
+    { border: "border-lime-500/30", text: "text-lime-400", shadow: "shadow-[0_0_30px_-10px_rgba(132,204,22,0.2)]", bg: "bg-lime-500/20", borderActive: "border-lime-500" },
+  ];
+
+  const oceanColors = [
+    { border: "border-blue-500/30", text: "text-blue-400", shadow: "shadow-[0_0_30px_-10px_rgba(59,130,246,0.2)]", bg: "bg-blue-500/20", borderActive: "border-blue-500" },
+    { border: "border-cyan-500/30", text: "text-cyan-400", shadow: "shadow-[0_0_30px_-10px_rgba(34,211,238,0.2)]", bg: "bg-cyan-500/20", borderActive: "border-cyan-500" },
+    { border: "border-sky-500/30", text: "text-sky-400", shadow: "shadow-[0_0_30px_-10px_rgba(14,165,233,0.2)]", bg: "bg-sky-500/20", borderActive: "border-sky-500" },
+    { border: "border-indigo-500/30", text: "text-indigo-400", shadow: "shadow-[0_0_30px_-10px_rgba(99,102,241,0.2)]", bg: "bg-indigo-500/20", borderActive: "border-indigo-500" },
+  ];
+
+  let colors = defaultColors;
+  if (theme === "cyberpunk") colors = cyberpunkColors;
+  if (theme === "matrix") colors = matrixColors;
+  if (theme === "ocean") colors = oceanColors;
+
   return colors[idx % colors.length];
 };
 
-export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDelete, onCalculationChange, onSelectManualMode, onRemoveUser, onChangeUserRole }: RoomProps) {
+const getThemeUI = (theme?: string) => {
+  switch (theme) {
+    case "cyberpunk": return {
+      textGradient: "from-pink-500 to-yellow-500",
+      cardBorder: "border-pink-500/20 shadow-[0_0_40px_-10px_rgba(236,72,153,0.2)]",
+    };
+    case "matrix": return {
+      textGradient: "from-emerald-400 to-teal-500",
+      cardBorder: "border-emerald-500/20 shadow-[0_0_40px_-10px_rgba(16,185,129,0.2)]",
+    };
+    case "ocean": return {
+      textGradient: "from-blue-400 to-cyan-500",
+      cardBorder: "border-cyan-500/20 shadow-[0_0_40px_-10px_rgba(56,187,248,0.2)]",
+    };
+    default: return {
+      textGradient: "from-cyan-400 to-purple-500",
+      cardBorder: "border-white/10 shadow-[0_0_40px_-10px_rgba(168,85,247,0.2)]",
+    };
+  }
+};
+
+export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDelete, onCalculationChange, onSelectManualMode, onRemoveUser, onChangeUserRole, onThemeChange }: RoomProps) {
   const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
   const [userToRemove, setUserToRemove] = useState<string | null>(null);
@@ -202,12 +252,14 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
     totalSum += result;
   });
 
+  const ui = getThemeUI(roomState.theme);
+
   return (
     <div className="space-y-6 sm:space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 sm:p-6 rounded-3xl bg-slate-900/50 border border-white/10 backdrop-blur-sm shadow-[0_0_40px_-10px_rgba(168,85,247,0.2)]">
+      <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 p-4 sm:p-6 rounded-3xl bg-slate-900/50 border backdrop-blur-sm ${ui.cardBorder}`}>
         <div className="text-center sm:text-left">
-          <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
+          <h2 className={`text-2xl sm:text-3xl font-bold bg-gradient-to-r ${ui.textGradient} bg-clip-text text-transparent`}>
             {roomState.name}
           </h2>
           <div className="flex items-center justify-center sm:justify-start gap-4 mt-1">
@@ -231,6 +283,50 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
           </div>
         </div>
         <div className="flex w-full sm:w-auto gap-3 items-center justify-center sm:justify-end flex-wrap">
+          {currentUser.role === "ScrumMaster" && onThemeChange && (
+            <div className="flex gap-1.5 p-1.5 rounded-xl border bg-slate-900/60 border-white/10">
+              <button
+                aria-label="Tema Nebula"
+                onClick={() => onThemeChange("default")}
+                className={`w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 border-2 transition-all ${
+                  roomState.theme === "default" || !roomState.theme
+                    ? "border-white scale-110 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
+                    : "border-transparent opacity-50 hover:opacity-100"
+                }`}
+                title="Nebula"
+              />
+              <button
+                aria-label="Tema Cyberpunk"
+                onClick={() => onThemeChange("cyberpunk")}
+                className={`w-6 h-6 rounded-full bg-gradient-to-br from-fuchsia-500 to-pink-500 border-2 transition-all ${
+                  roomState.theme === "cyberpunk"
+                    ? "border-white scale-110 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
+                    : "border-transparent opacity-50 hover:opacity-100"
+                }`}
+                title="Cyberpunk"
+              />
+              <button
+                aria-label="Tema Matrix"
+                onClick={() => onThemeChange("matrix")}
+                className={`w-6 h-6 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 border-2 transition-all ${
+                  roomState.theme === "matrix"
+                    ? "border-white scale-110 shadow-[0_0_10px_rgba(16,185,129,0.5)]"
+                    : "border-transparent opacity-50 hover:opacity-100"
+                }`}
+                title="Matrix"
+              />
+              <button
+                aria-label="Tema Ocean"
+                onClick={() => onThemeChange("ocean")}
+                className={`w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 border-2 transition-all ${
+                  roomState.theme === "ocean"
+                    ? "border-white scale-110 shadow-[0_0_10px_rgba(56,187,248,0.5)]"
+                    : "border-transparent opacity-50 hover:opacity-100"
+                }`}
+                title="Ocean"
+              />
+            </div>
+          )}
           <button
             onClick={handleShare}
             className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl font-bold transition-all border text-xs sm:text-sm bg-slate-800/80 text-cyan-400 border-cyan-500/40 hover:border-cyan-500/80 hover:bg-slate-700"
@@ -451,7 +547,7 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
             <div className="flex flex-wrap justify-center items-start gap-4 sm:gap-6">
               {roles.map((role, idx) => {
                 const { result, stats } = roleResults[role];
-                const colors = getColorClasses(idx);
+                const colors = getColorClasses(idx, roomState.theme);
                 return (
                   <div key={role} className="flex flex-col gap-4 flex-1 min-w-[200px] max-w-[300px]">
                     <div className={`p-4 sm:p-6 rounded-3xl border ${colors.border} bg-slate-900/60 ${colors.shadow} flex flex-col items-center justify-center relative overflow-hidden`}>
