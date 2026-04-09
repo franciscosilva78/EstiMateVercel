@@ -55,7 +55,7 @@ function AppContent() {
   useEffect(() => {
     if (roomId && isAuthReady) {
       const roomRef = doc(db, "rooms", roomId);
-      
+
       const unsubscribe = onSnapshot(roomRef, (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data() as RoomState;
@@ -66,22 +66,26 @@ function AppContent() {
             const userExistsInRoom = data.users[currentUserId];
 
             if (userExistsInRoom) {
-              // User still exists in room - normal update
+              // User exists in room - normal update
               setUser(data.users[currentUserId]);
               setRoomState(data);
               setWasRemovedFromRoom(false);
-            } else if (user && user.id === currentUserId) {
-              // User was removed from the room
-              console.log("User was removed from room");
-              setUser(null);
-              setRoomState(null);
-              setWasRemovedFromRoom(true);
-              // Clear any potential cached data
-              setRoomNameInput("");
-              // Keep the room ID to show join form again
             } else {
-              // User hasn't joined yet or no previous user state
-              setRoomState(data);
+              // User doesn't exist in room
+              if (user && user.id === currentUserId) {
+                // User was previously in the room but now removed
+                console.log("User was removed from room");
+                setUser(null);
+                setRoomState(null);
+                setWasRemovedFromRoom(true);
+                // Clear any potential cached data
+                setRoomNameInput("");
+                // Keep the room ID to show join form again
+              } else {
+                // User hasn't joined yet - show room state but no user
+                setRoomState(data);
+                setWasRemovedFromRoom(false);
+              }
             }
           } else {
             setRoomState(data);
@@ -105,10 +109,15 @@ function AppContent() {
   const handleCreateRoom = async (e: FormEvent) => {
     e.preventDefault();
     if (!roomNameInput.trim() || !isAuthReady) return;
-    
+
     const newRoomId = generateShortId();
-    const scrumMaster: User = { id: auth.currentUser!.uid, name: "Scrum Master", role: "ScrumMaster", vote: null };
-    
+    const scrumMaster: User = {
+      id: auth.currentUser!.uid,
+      name: "Scrum Master",
+      role: "ScrumMaster",
+      vote: null
+    };
+
     const newRoom: RoomState = {
       id: newRoomId,
       name: roomNameInput,
@@ -123,12 +132,12 @@ function AppContent() {
 
     try {
       await setDoc(doc(db, "rooms", newRoomId), newRoom);
-      
+
       // Keep lang param if exists
       const url = new URL(window.location.href);
       url.pathname = `/room/${newRoomId}`;
       window.history.pushState({}, "", url.toString());
-      
+
       setRoomId(newRoomId);
       setUser(scrumMaster);
     } catch (error) {
@@ -138,18 +147,23 @@ function AppContent() {
 
   const handleJoin = async (name: string, role: string) => {
     if (!isAuthReady || !roomId) return;
-    
+
     if (roomState) {
-      const nameExists = (Object.values(roomState.users) as User[]).some(
-        (u) => u.name.toLowerCase() === name.trim().toLowerCase() && u.id !== auth.currentUser!.uid
-      );
+      const nameExists = (Object.values(roomState.users) as User[])
+        .filter(u => u && u.name && u.name.trim() !== "")
+        .some((u) => u.name.toLowerCase() === name.trim().toLowerCase() && u.id !== auth.currentUser!.uid);
       if (nameExists) {
         throw new Error(t('nameInUse'));
       }
     }
 
-    const newUser: User = { id: auth.currentUser!.uid, name: name.trim(), role, vote: null };
-    
+    const newUser: User = {
+      id: auth.currentUser!.uid,
+      name: name.trim(),
+      role,
+      vote: null
+    };
+
     try {
       const roomRef = doc(db, "rooms", roomId);
       await updateDoc(roomRef, {
@@ -219,12 +233,6 @@ function AppContent() {
     }
   };
 
-  const handleThemeChange = async (theme: "default" | "cyberpunk" | "matrix" | "ocean") => {
-    if (roomId) {
-      const roomRef = doc(db, "rooms", roomId);
-      await updateDoc(roomRef, { theme });
-    }
-  };
 
   const handleDeleteRoom = async () => {
     if (roomId) {
@@ -243,6 +251,20 @@ function AppContent() {
         console.log(`User ${userId} removed from room`);
       } catch (error) {
         console.error("Error removing user:", error);
+      }
+    }
+  };
+
+  const handleChangeUserRole = async (newRole: string) => {
+    if (roomId && user) {
+      try {
+        const roomRef = doc(db, "rooms", roomId);
+        await updateDoc(roomRef, {
+          [`users.${user.id}.role`]: newRole
+        });
+        console.log(`User role changed to: ${newRole}`);
+      } catch (error) {
+        console.error("Error changing user role:", error);
       }
     }
   };
@@ -300,15 +322,15 @@ function AppContent() {
       ) : (
         <Room
           roomState={roomState}
-          currentUser={(roomState?.users[user.id]) || user}
+          currentUser={roomState?.users[user?.id] || user}
           onVote={handleVote}
           onReveal={handleReveal}
           onReset={handleReset}
           onDelete={handleDeleteRoom}
           onCalculationChange={handleCalculationChange}
           onSelectManualMode={handleSelectManualMode}
-          onThemeChange={handleThemeChange}
           onRemoveUser={handleRemoveUser}
+          onChangeUserRole={handleChangeUserRole}
         />
       )}
 
