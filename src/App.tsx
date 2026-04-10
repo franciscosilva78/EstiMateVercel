@@ -245,9 +245,26 @@ function AppContent() {
     if (roomId && user?.role === "ScrumMaster") {
       try {
         const roomRef = doc(db, "rooms", roomId);
-        await updateDoc(roomRef, {
-          [`users.${userId}`]: deleteField()
-        });
+
+        // Get current room state to clean up manual selections if needed
+        if (roomState) {
+          const updates: Record<string, any> = {
+            [`users.${userId}`]: deleteField()
+          };
+
+          // If room status is revealed and manual mode has selections,
+          // we need to trigger a recalculation by clearing manual selections
+          if (roomState.status === "revealed" && roomState.manualModeSelections) {
+            updates.manualModeSelections = {};
+          }
+
+          await updateDoc(roomRef, updates);
+        } else {
+          await updateDoc(roomRef, {
+            [`users.${userId}`]: deleteField()
+          });
+        }
+
         console.log(`User ${userId} removed from room`);
       } catch (error) {
         console.error("Error removing user:", error);
