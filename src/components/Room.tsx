@@ -153,7 +153,8 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
     setCustomRole("");
   };
 
-  const users = Object.values(roomState.users).filter(u =>
+  // Filter and deduplicate users to prevent showing duplicates
+  const allUsers = Object.values(roomState.users).filter(u =>
     u &&
     u.id &&
     u.name &&
@@ -162,6 +163,13 @@ export function Room({ roomState, currentUser, onVote, onReveal, onReset, onDele
     u.role !== "ScrumMaster" &&
     typeof u.vote !== 'undefined'
   );
+
+  // Remove duplicates by ID (keep the most recent one)
+  const uniqueUsersMap = new Map();
+  allUsers.forEach(user => {
+    uniqueUsersMap.set(user.id, user);
+  });
+  const users = Array.from(uniqueUsersMap.values());
   const votedCount = users.filter(u => u.vote !== null).length;
   const isRevealed = roomState.status === "revealed";
   const method = roomState.calculationMethod || "sumByRole";
